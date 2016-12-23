@@ -45,7 +45,7 @@ func newRoute(kind RouteKind, method reflect.Value) *Route {
 }
 
 type Router interface {
-	Route(methods interface{}, path string, handler interface{}, middlewares ...Handler)
+	AddRoute(methods interface{}, path string, handler interface{}, middlewares ...Handler)
 	Match(requestPath, method string) (*Route, Params)
 }
 
@@ -496,7 +496,10 @@ func (r *router) addStruct(methods map[string]string, path string, structPtr int
 	}
 }
 
-func (r *router) Route(methods interface{}, path string, object interface{}, handlers ...Handler) {
+func (r *router) AddRoute(methods interface{}, path string, object interface{}, handlers ...Handler) {
+	assert(path[0] == '/', "Path must begin with '/'")
+	assert(len(handlers) > 0, "There must be at least one handler")
+
 	var ms []string
 	switch methods.(type) {
 	case string:
@@ -504,7 +507,7 @@ func (r *router) Route(methods interface{}, path string, object interface{}, han
 	case []string:
 		ms = methods.([]string)
 	default:
-		panic("Invalid methods")
+		panic("Invalid HTTP methods")
 	}
 
 	v := reflect.ValueOf(object)
