@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strings"
+	"net/http"
 )
 
 var Methods = []string{
@@ -27,17 +29,19 @@ const (
 	FuncRepRoute                     // func (http.ResponseWriter)
 	FuncReqRoute                     // func (*http.Request)
 	FuncCtxRoute                     // func (*mel.Context)
-	StructRoute                      // func (struct) <Method>()
-	StructPtrRoute                   // func (*struct) <Method>()
 )
 
 type Route struct {
 	kind   RouteKind
-	method interface{}
+	method reflect.Value
+	handlers []Handler
 }
 
-func (r *Route) isStruct() bool {
-	return r.kind == StructRoute || r.kind == StructPtrRoute
+func newRoute(kind RouteKind, method reflect.Value) *Route {
+	return &Route{
+		kind: kind,
+		method: method,
+	}
 }
 
 type Router interface {
@@ -312,22 +316,208 @@ func (r *router) printTrees() {
 	}
 }
 
+func (r *router) matchNode(n *node, path string, params Params) (*node, Params) {
+	if n.kind == staticNode {
+		if strings.HasPrefix(path, n.content) {
+			if len(path) == len(n.content) {
+				return n, params
+			}
+
+			for _, c := range n.edges {
+				newN, newParams := r.matchNode(c, path[len(n.content):], params)
+				if newN != nil {
+					return newN, newParams
+				}
+			}
+		}
+	} else if n.kind == anyNode {
+		for _, c := range n.edges {
+			idx := strings.LastIndex(path, c.content)
+			if idx > -1 {
+				params = append(params, param{n.content, path[:idx]})
+				return r.matchNode(c, path[idx:], params)
+			}
+		}
+
+		return n, append(params, param{n.content, path})
+	} else if n.kind == namedNode {
+		for _, c := range n.edges {
+			idx := strings.Index(path, c.content)
+			if idx > -1 {
+				params = append(params, param{n.content, path[:idx]})
+				return r.matchNode(c, path[idx:], params)
+			}
+		}
+
+		idx := strings.IndexByte(path, '/')
+		if idx == -1 {
+			params = append(params, param{n.content, path})
+			return n, params
+		}
+	} else if n.kind == regexNode {
+		idx := strings.IndexByte(path, '/')
+		if idx > -1 {
+			if n.regexp.MatchString(path[:idx]) {
+				for _, c := range n.edges {
+					newN, newParams := r.matchNode(c, path[idx:], params)
+					if newN != nil {
+						return newN, append(Params{param{n.content, path[:idx]}}, newParams...)
+					}
+				}
+			}
+
+			return nil, params
+		}
+
+		for _, c := range n.edges {
+			idx := strings.Index(path, c.content)
+			if idx > -1 && n.regexp.MatchString(path[:idx]) {
+				params = append(params, param{n.content, path[:idx]})
+				return r.matchNode(c, path[idx:], params)
+			}
+		}
+
+		if n.regexp.MatchString(path) {
+			params = append(params, param{n.content, path})
+			return n, params
+		}
+	}
+
+	return nil, params
+}
+
 func (r *router) Match(method, path string) (*Route, Params) {
 	cn, ok := r.trees[method]
 	if !ok {
 		return nil, nil
 	}
 
+	params := make(Params, 0, strings.Count(path, "/"))
+	for _, n := range cn.edges {
+		newN, newParams := r.matchNode(n, path, params)
+		if newN != nil {
+			return newN.route, newParams
+		}
+	}
 
+	return nil, nil
 }
 
-func (r *router) addStruct(methods map[string]string, url string, object interface{}) {
-	v := reflect.ValueOf(object)
-	t := v.Type().Elem()
+func (r *router) addFunc(methods []string, path string, function interface{}, handlers []Handler) {
+	v := reflect.ValueOf(function)
+    t := v.Type()
 
-	for verb, method := range methods {
-		if m, ok :=
+	var kind RouteKind
+
+	if t.NumIn() == 0 {
+		kind = FuncRoute
+	} else if t.NumIn() == 1 {
+		if t.In(0) == reflect.TypeOf(&Context{}) {
+			kind = FuncCtxRoute
+		} else if t.In(0) == reflect.TypeOf(&http.Request{}) {
+			kind = FuncReqRoute
+		} else if t.In(0).Kind() == reflect.Interface &&
+			t.In(0).Name() == "ResponseWriter" &&
+			t.In(0).PkgPath() == "net/http" {
+			kind = FuncRepRoute
+		} else {
+			panic(fmt.Sprintln("Invalid function type", methods, path, function))
+		}
+	} else if t.NumIn() == 2 &&
+		t.In(0).Kind() == reflect.Interface &&
+		t.In(0).Name() == "ResponseWriter" &&
+		t.In(0).PkgPath() == "net/http" &&
+		t.In(1) == reflect.TypeOf(&http.Request{}) {
+		kind = FuncRepReqRoute
+	} else {
+		panic(fmt.Sprintln("Invalid function type", methods, path, function))
+	}
+
+	route := &Route{
+		kind: kind,
+		method: function,
+		handlers: handlers,
+	}
+	for _, m := range methods {
+		r.addRoute(m, path, route)
 	}
 }
 
-func (r *router) Route()
+func (r *router) addStruct(methods map[string]string, path string, structPtr interface{}, handlers []Handler) {
+	v := reflect.ValueOf(structPtr)
+	t := v.Type()
+
+	for verb, name := range methods {
+		method, ok := t.MethodByName(name)
+		if !ok {
+			method, ok = t.MethodByName("Any")
+		}
+
+		if !ok {
+			continue
+		}
+
+		var kind RouteKind
+
+		mt := method.Type
+		if mt.NumIn() == 1 {
+			kind = FuncRoute
+		} else if mt.NumIn() == 2 {
+			if mt.In(1) == reflect.TypeOf(&Context{}) {
+				kind = FuncCtxRoute
+			} else if t.In(1) == reflect.TypeOf(&http.Request{}) {
+				kind = FuncReqRoute
+			} else if t.In(1).Kind() == reflect.Interface &&
+				t.In(1).Name() == "ResponseWriter" &&
+				t.In(1).PkgPath() == "net/http" {
+				kind = FuncRepRoute
+			} else {
+				panic(fmt.Sprintln("Invalid function type", methods, path, mt))
+			}
+		} else if t.NumIn() == 3 &&
+			t.In(1).Kind() == reflect.Interface &&
+			t.In(1).Name() == "ResponseWriter" &&
+			t.In(1).PkgPath() == "net/http" &&
+			t.In(2) == reflect.TypeOf(&http.Request{}) {
+			kind = FuncRepReqRoute
+		} else {
+			panic(fmt.Sprintln("Invalid function type", methods, path, mt))
+		}
+
+		var f reflect.Value = func(in []reflect.Value) []reflect.Value {
+			in = append([]reflect.Value{structPtr}, in...)
+			return method.Func.Call(in)
+		}
+		r.addRoute(verb, path, &Route{
+			kind: kind,
+			method: f,
+			handlers: handlers,
+		})
+	}
+}
+
+func (r *router) Route(methods interface{}, path string, object interface{}, handlers ...Handler) {
+	var ms []string
+	switch methods.(type) {
+	case string:
+		ms = []string{methods.(string)}
+	case []string:
+		ms = methods.([]string)
+	default:
+		panic("Invalid methods")
+	}
+
+	v := reflect.ValueOf(object)
+
+	if v.Kind() == reflect.Func {
+		r.addFunc(ms, path, object, handlers)
+	} else if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Struct {
+		var mm = make(map[string]string)
+		for _, m := range ms {
+			mm[m] = strings.Title(strings.ToLower(m))
+		}
+		r.addStruct(mm, path, object, handlers)
+	} else {
+		panic("Invalid route handler")
+	}
+}
