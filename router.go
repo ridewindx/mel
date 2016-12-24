@@ -101,13 +101,20 @@ func (e edges) Less(i, j int) bool {
 }
 
 type router struct {
+    routerGroup
+
 	trees map[string]*node
 }
 
 func NewRouter() (r *router) {
 	r = &router{
+        routerGroup{
+			basePath: "/",
+		},
 		trees: make(map[string]*node),
 	}
+
+	r.routerGroup.router = r
 
 	for _, m := range Methods {
 		r.trees[m] = &node{}
