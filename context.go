@@ -10,8 +10,12 @@ type Handler interface {
 }
 
 type Context struct {
-    req *http.Request
-    ResponseWriter
+    Request *http.Request
+    Writer ResponseWriter
 }
 
 const abortIndex int8 = math.MaxInt8 / 2
+
+func (c *Context) File(filePath string) {
+    http.ServeFile(c.Writer, c.Request, filePath)
+}
