@@ -59,12 +59,12 @@ const (
 )
 
 type node struct {
-	kind    nodeKind
-	route   *Route
-	regexp  *regexp.Regexp
-	content string
-	edges   edges
-	path    string
+	kind     nodeKind
+	route    *Route
+	regexp   *regexp.Regexp
+	content  string
+	children nodes
+	path     string
 }
 
 func (n *node) equal(o *node) bool {
@@ -74,20 +74,20 @@ func (n *node) equal(o *node) bool {
 	return false
 }
 
-type edges []*node
+type nodes []*node
 
-func (e edges) Len() int {
+func (e nodes) Len() int {
 	return len(e)
 }
 
-func (e edges) Swap(i, j int) {
+func (e nodes) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }
 
 // Static route is first.
 // If two static routes, content longer is first.
 // Otherwise, first added, first matched.
-func (e edges) Less(i, j int) bool {
+func (e nodes) Less(i, j int) bool {
 	if e[i].kind == staticNode {
 		if e[j].kind == staticNode {
 			return len(e[i].content) > len(e[j].content)
@@ -278,7 +278,7 @@ func (r *router) addRoute(method, path string, route *Route) {
 
 	outer:
 	for i := 0; i < num; i++ {
-		for _, node := range p.edges {
+		for _, node := range p.children {
 			if node.equal(nodes[i]) {
 				if i == num-1 {
 					node.route = route
@@ -288,8 +288,8 @@ func (r *router) addRoute(method, path string, route *Route) {
 			}
 		}
 
-		p.edges = append(p.edges, nodes[i])
-		sort.Sort(p.edges)
+		p.children = append(p.children, nodes[i])
+		sort.Sort(p.children)
 		p = nodes[i]
 	}
 }
@@ -309,15 +309,15 @@ func printNodes(i int, nodes []*node) {
 			fmt.Printf("  %p", n.route.method.Interface())
 		}
 		fmt.Println()
-		printNodes(i+1, n.edges)
+		printNodes(i+1, n.children)
 	}
 }
 
 func (r *router) printTrees() {
 	for _, method := range Methods {
-		if len(r.trees[method].edges) > 0 {
+		if len(r.trees[method].children) > 0 {
 			fmt.Println(method)
-			printNodes(1, r.trees[method].edges)
+			printNodes(1, r.trees[method].children)
 			fmt.Println()
 		}
 	}
@@ -330,7 +330,7 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 				return n, params
 			}
 
-			for _, c := range n.edges {
+			for _, c := range n.children {
 				newN, newParams := r.matchNode(c, path[len(n.content):], params)
 				if newN != nil {
 					return newN, newParams
@@ -338,37 +338,37 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 			}
 		}
 	} else if n.kind == anyNode {
-		for _, c := range n.edges {
+		for _, c := range n.children {
 			idx := strings.LastIndex(path, c.content)
 			if idx > -1 {
-				params = append(params, param{n.content, path[:idx]})
+				params = append(params, Param{n.content, path[:idx]})
 				return r.matchNode(c, path[idx:], params)
 			}
 		}
 
-		return n, append(params, param{n.content, path})
+		return n, append(params, Param{n.content, path})
 	} else if n.kind == namedNode {
-		for _, c := range n.edges {
+		for _, c := range n.children {
 			idx := strings.Index(path, c.content)
 			if idx > -1 {
-				params = append(params, param{n.content, path[:idx]})
+				params = append(params, Param{n.content, path[:idx]})
 				return r.matchNode(c, path[idx:], params)
 			}
 		}
 
 		idx := strings.IndexByte(path, '/')
 		if idx == -1 {
-			params = append(params, param{n.content, path})
+			params = append(params, Param{n.content, path})
 			return n, params
 		}
 	} else if n.kind == regexNode {
 		idx := strings.IndexByte(path, '/')
 		if idx > -1 {
 			if n.regexp.MatchString(path[:idx]) {
-				for _, c := range n.edges {
+				for _, c := range n.children {
 					newN, newParams := r.matchNode(c, path[idx:], params)
 					if newN != nil {
-						return newN, append(Params{param{n.content, path[:idx]}}, newParams...)
+						return newN, append(Params{Param{n.content, path[:idx]}}, newParams...)
 					}
 				}
 			}
@@ -376,16 +376,16 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 			return nil, params
 		}
 
-		for _, c := range n.edges {
+		for _, c := range n.children {
 			idx := strings.Index(path, c.content)
 			if idx > -1 && n.regexp.MatchString(path[:idx]) {
-				params = append(params, param{n.content, path[:idx]})
+				params = append(params, Param{n.content, path[:idx]})
 				return r.matchNode(c, path[idx:], params)
 			}
 		}
 
 		if n.regexp.MatchString(path) {
-			params = append(params, param{n.content, path})
+			params = append(params, Param{n.content, path})
 			return n, params
 		}
 	}
@@ -400,7 +400,7 @@ func (r *router) Match(method, path string) (*Route, Params) {
 	}
 
 	params := make(Params, 0, strings.Count(path, "/"))
-	for _, n := range cn.edges {
+	for _, n := range cn.children {
 		newN, newParams := r.matchNode(n, path, params)
 		if newN != nil {
 			return newN.route, newParams
