@@ -3,6 +3,8 @@ package mel
 import (
 	"regexp"
 	"strings"
+	"net/http"
+	"path"
 )
 
 type RouterGroup interface {
@@ -126,14 +128,29 @@ func (group *routerGroup) StaticFile(relativePath, filePath string) {
 	group.Head(relativePath, handler)
 }
 
-func (group *RouterGroup) StaticDir(relativePath, root string) {
+// StaticDir serves files from the given file system root.
+// router.StaticDir("/static", "/var/www")
+func (group *routerGroup) StaticDir(relativePath, root string) {
 	if strings.Contains(relativePath, ":") || strings.Contains(relativePath, "*") {
 		panic("URL parameters can not be used when serving a static folder")
 	}
 
 	fs := Dir(root, false)
 
-	absolutePath := joinPaths(group.)
+	absolutePath := joinPaths(group.basePath, relativePath)
+	fileHandler := http.StripPrefix(absolutePath, http.FileServer(fs))
+	_, nolisting := fs.(*onlyfilesFS)
+	handler := func(c *Context) {
+		if nolisting {
+			c.Writer.WriteHeader(404)
+		}
+		fileHandler.ServeHTTP(c.Writer, c.Request)
+	}
+
+	pathPattern := path.Join(relativePath, "/*filepath")
+
+	group.Get(pathPattern, handler)
+	group.Head(pathPattern, handler)
 }
 
 func (group *routerGroup) combineHandlers(handlers []Handler) []Handler {
