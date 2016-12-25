@@ -6,13 +6,16 @@ import (
 	"strconv"
 )
 
-type (
-	param struct {
-		Name  string
-		Value string
-	}
-	Params []param
-)
+// Param is a single URL parameter, consisting of a key and a value.
+type Param struct {
+	Key   string
+	Value string
+}
+
+// Params is a Param-slice, as returned by the router.
+// The slice is ordered, the first URL parameter is also the first slice value.
+// It is therefore safe to read values by the index.
+type Params []Param
 
 var errParamNotExist = errors.New("Param not exist")
 
@@ -27,7 +30,7 @@ func (p *Params) Get(key string) string {
 	}
 
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			return v.Value
 		}
 	}
@@ -43,7 +46,7 @@ func (p *Params) String(key string) (string, error) {
 	}
 
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			return v.Value, nil
 		}
 	}
@@ -60,7 +63,7 @@ func (p *Params) Strings(key string) ([]string, error) {
 
 	var s []string
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			s = append(s, v.Value)
 		}
 	}
@@ -79,7 +82,7 @@ func (p *Params) Escape(key string) (string, error) {
 	}
 
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			return template.HTMLEscapeString(v.Value), nil
 		}
 	}
@@ -135,7 +138,7 @@ func (p *Params) MustString(key string, defaults ...string) string {
 	}
 
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			return v.Value
 		}
 	}
@@ -155,7 +158,7 @@ func (p *Params) MustStrings(key string, defaults ...[]string) []string {
 
 	var s = make([]string, 0)
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			s = append(s, v.Value)
 		}
 	}
@@ -177,7 +180,7 @@ func (p *Params) MustEscape(key string, defaults ...string) string {
 	}
 
 	for _, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			return template.HTMLEscapeString(v.Value)
 		}
 	}
@@ -318,21 +321,13 @@ func (p *Params) Set(key, value string) {
 	}
 
 	for i, v := range *p {
-		if v.Name == key {
+		if v.Key == key {
 			(*p)[i].Value = value
 			return
 		}
 	}
 
-	*p = append(*p, param{key, value})
-}
-
-type Paramer interface {
-	SetParams([]param)
-}
-
-func (p *Params) SetParams(params []param) {
-	*p = params
+	*p = append(*p, Param{key, value})
 }
 
 func Param() HandlerFunc {
