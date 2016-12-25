@@ -5,9 +5,7 @@ import (
     "math"
 )
 
-type Handler interface {
-    Handle(*Context)
-}
+const abortIndex int8 = math.MaxInt8 / 2
 
 type Context struct {
     Request *http.Request
@@ -22,7 +20,15 @@ type Context struct {
 
 }
 
-const abortIndex int8 = math.MaxInt8 / 2
+// Next executes the pending handlers in the chain inside the calling handler.
+// It should be used only inside middleware.
+func (c *Context) Next() {
+    c.index++
+    s := int8(len(c.handlers))
+    for ; c.index < s; c.index++ {
+        c.handlers[c.index](c)
+    }
+}
 
 func (c *Context) File(filePath string) {
     http.ServeFile(c.Writer, c.Request, filePath)

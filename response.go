@@ -4,6 +4,7 @@ import (
     "net/http"
     "net"
     "bufio"
+    "io"
 )
 
 // ResponseWriter is a wrapper around http.ResponseWriter that
@@ -12,15 +13,19 @@ type ResponseWriter interface {
     http.ResponseWriter
     http.Flusher
     http.Hijacker
+    http.CloseNotifier
 
-    // Status returns the status code,
+    // Status returns the http response status code,
     // or 0 if the response has not been written.
     Status() int
 
     // Written returns whether or not the response has been written.
     Written() bool
 
-    // Size returns the size of the response body.
+    // WriteString writes the string into the response body.
+    WriteString(string) (int, error)
+
+    // Size returns the number of bytes already written into the response http body.
     Size() int
 }
 
@@ -30,42 +35,62 @@ type responseWriter struct {
     size int
 }
 
-func (rw *responseWriter) WriteHeader(status int) {
-    rw.status = status
-    rw.ResponseWriter.WriteHeader(status)
+var _ ResponseWriter = &responseWriter{}
+
+func (w *responseWriter) WriteHeader(status int) {
+	if w.Written() {
+        // TODO: debugPrint("[WARNING] Headers were already written. Wanted to override status code %d with %d", w.status, status)
+		return
+    }
+
+    w.status = status
+    w.ResponseWriter.WriteHeader(status)
 }
 
-func (rw *responseWriter) Write(bytes []byte) (int, error) {
-    if !rw.Written() {
-        rw.WriteHeader(http.StatusOK)
+func (w *responseWriter) Write(bytes []byte) (int, error) {
+    if !w.Written() {
+        w.WriteHeader(http.StatusOK)
     }
-    size, err := rw.ResponseWriter.Write(bytes)
-    rw.size += size
+    size, err := w.ResponseWriter.Write(bytes)
+    w.size += size
     return size, err
 }
 
-func (rw *responseWriter) Status() int {
-    return rw.status
+func (w *responseWriter) WriteString(s string) (int, error) {
+    if !w.Written() {
+        w.WriteHeader(http.StatusOK)
+    }
+
+	size, err := io.WriteString(w.ResponseWriter, s)
+    w.size += size
+    return size, err
 }
 
-func (rw *responseWriter) Size() int {
-    return rw.size
+func (w *responseWriter) Status() int {
+    return w.status
 }
 
-func (rw *responseWriter) Written() bool {
-    return rw.status != 0
+func (w *responseWriter) Size() int {
+    return w.size
 }
 
-func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-    return rw.ResponseWriter.(http.Hijacker).Hijack()
+func (w *responseWriter) Written() bool {
+    return w.status != 0
 }
 
-func (rw *responseWriter) CloseNotify() <-chan bool {
-    return rw.ResponseWriter.(http.CloseNotifier).CloseNotify()
+// Hijack implements the http.Hijacker interface
+func (w *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+    return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
-func (rw *responseWriter) Flush() {
-    flusher, ok := rw.ResponseWriter.(http.Flusher)
+// CloseNotify implements the http.CloseNotify interface
+func (w *responseWriter) CloseNotify() <-chan bool {
+    return w.ResponseWriter.(http.CloseNotifier).CloseNotify()
+}
+
+// Flush implements the http.Flush interface
+func (w *responseWriter) Flush() {
+    flusher, ok := w.ResponseWriter.(http.Flusher)
     if ok {
         flusher.Flush()
     }
