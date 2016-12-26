@@ -2,6 +2,12 @@ package mel
 
 import "path"
 
+// Object represents "object" in JSON.
+type Object map[string]interface{}
+
+// Array represents "array" in JSON.
+type Array []interface{}
+
 func lastChar(str string) uint8 {
 	size := len(str)
 	if size == 0 {
