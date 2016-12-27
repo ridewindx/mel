@@ -264,6 +264,7 @@ func (p *Params) MustBool(key string, defaults ...bool) bool {
 	return r
 }
 
+// Param returns the value of the URL param.
 func (ctx *Context) Param(key string, defaults ...string) string {
 	return ctx.Params().MustString(key, defaults...)
 }
