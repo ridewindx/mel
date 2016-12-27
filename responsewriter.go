@@ -37,14 +37,16 @@ type responseWriter struct {
 
 var _ ResponseWriter = &responseWriter{}
 
-func (w *responseWriter) WriteHeader(status int) {
+func (w *responseWriter) WriteHeader(status ...int) {
 	if w.Written() {
         // TODO: debugPrint("[WARNING] Headers were already written. Wanted to override status code %d with %d", w.status, status)
 		return
     }
 
-    w.status = status
-    w.ResponseWriter.WriteHeader(status)
+    if (len(status) > 0) {
+        w.status = status[0]
+    }
+    w.ResponseWriter.WriteHeader(w.status)
 }
 
 func (w *responseWriter) Write(bytes []byte) (int, error) {
