@@ -3,6 +3,8 @@ package mel
 import (
     "net/http"
     "math"
+    "strings"
+    "net"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
@@ -185,6 +187,37 @@ func (c *Context) GetPostForms(key string) ([]string, bool) {
     }
 
     return []string{}, false
+}
+
+// ClientIP implements a best effort algorithm to return the real client IP.
+// It parses X-Real-IP and X-Forwarded-For in order to work properly with
+// reverse-proxies such as nginx or haproxy.
+func (c *Context) ClientIP() string {
+    if c.mel.ForwardedByClientIP {
+        clientIP := strings.TrimSpace(c.requestHeader("X-Real-Ip"))
+        if len(clientIP) > 0 {
+            return clientIP
+        }
+        clientIP = c.requestHeader("X-Forwarded-For")
+        if index := strings.IndexByte(clientIP, ','); index >= 0 {
+            clientIP = clientIP[0:index]
+        }
+        clientIP = strings.TrimSpace(clientIP)
+        if len(clientIP) > 0 {
+            return clientIP
+        }
+    }
+    if ip, _, err := net.SplitHostPort(strings.TrimSpace(c.Request.RemoteAddr)); err == nil {
+        return ip
+    }
+    return ""
+}
+
+func (c *Context) requestHeader(key string) string {
+    if values, _ := c.Request.Header[key]; len(values) > 0 {
+        return values[0]
+    }
+    return ""
 }
 
 func (c *Context) Status(status int) {
