@@ -5,6 +5,8 @@ import (
     "math"
     "strings"
     "net"
+    "net/url"
+    "github.com/ridewindx/mel/render"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
@@ -231,6 +233,46 @@ func (c *Context) Header(key, value string) {
         c.Writer.Header().Set(key, value)
     } else {
         c.Writer.Header().Del(key)
+    }
+}
+
+type Cookie struct {
+    Name string
+    Value string
+    Path string
+    Domain string
+    MaxAge int
+    Secure bool
+    HttpOnly bool
+}
+
+func (c *Context) SetCookie(cookie *Cookie) {
+    if len(cookie.Path) == 0 {
+        cookie.Path = "/"
+    }
+    http.SetCookie(c.Writer, &http.Cookie{
+        Name: cookie.Name,
+        Value: url.QueryEscape(cookie.Value),
+        Path: cookie.Path,
+        Domain: cookie.Domain,
+        MaxAge: cookie.MaxAge,
+        Secure: cookie.Secure,
+        HttpOnly: cookie.HttpOnly,
+    })
+}
+
+func (c *Context) Cookie(name string) (string, error) {
+    cookie, err := c.Request.Cookie(name)
+    if err != nil {
+        return "", err
+    }
+    return url.QueryUnescape(cookie.Value)
+}
+
+func (c *Context) Render(code int, r render.Render) {
+    c.Status(code)
+    if err := r.Render(c.Writer); err != nil {
+        panic(err) // TODO
     }
 }
 
