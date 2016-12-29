@@ -2,7 +2,6 @@ package render
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -11,19 +10,17 @@ type String struct {
 	Data   []interface{}
 }
 
-var plainContentType = []string{"text/plain; charset=utf-8"}
+var _ Render = String{}
+
+const plainContentType = "text/plain; charset=utf-8"
 
 func (r String) Render(w http.ResponseWriter) error {
-	WriteString(w, r.Format, r.Data)
-	return nil
+	return WriteString(w, r.Format, r.Data)
 }
 
-func WriteString(w http.ResponseWriter, format string, data []interface{}) {
+func WriteString(w http.ResponseWriter, format string, data []interface{}) error {
 	writeContentType(w, plainContentType)
 
-	if len(data) > 0 {
-		fmt.Fprintf(w, format, data...)
-	} else {
-		io.WriteString(w, format)
-	}
+	_, err := fmt.Fprintf(w, format, data...)
+	return err
 }

@@ -26,7 +26,11 @@ type (
 	}
 )
 
-var htmlContentType = []string{"text/html; charset=utf-8"}
+var _ HTMLRender = HTMLDebug{}
+var _ HTMLRender = HTMLProduction{}
+var _ Render = HTML{}
+
+const htmlContentType = "text/html; charset=utf-8"
 
 func (r HTMLProduction) Instance(name string, data interface{}) Render {
 	return HTML{
@@ -43,6 +47,7 @@ func (r HTMLDebug) Instance(name string, data interface{}) Render {
 		Data:     data,
 	}
 }
+
 func (r HTMLDebug) loadTemplate() *template.Template {
 	if len(r.Files) > 0 {
 		return template.Must(template.ParseFiles(r.Files...))

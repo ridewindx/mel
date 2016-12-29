@@ -9,7 +9,9 @@ type XML struct {
 	Data interface{}
 }
 
-var xmlContentType = []string{"application/xml; charset=utf-8"}
+var Render = XML{}
+
+const xmlContentType = "application/xml; charset=utf-8"
 
 func (r XML) Render(w http.ResponseWriter) error {
 	writeContentType(w, xmlContentType)

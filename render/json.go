@@ -15,7 +15,10 @@ type (
 	}
 )
 
-var jsonContentType = []string{"application/json; charset=utf-8"}
+var _ Render = JSON{}
+var _ Render = IndentedJSON{}
+
+const jsonContentType = "application/json; charset=utf-8"
 
 func (r JSON) Render(w http.ResponseWriter) error {
 	return WriteJSON(w, r.Data)
@@ -27,8 +30,8 @@ func (r IndentedJSON) Render(w http.ResponseWriter) error {
 	if err != nil {
 		return err
 	}
-	w.Write(jsonBytes)
-	return nil
+	_, err = w.Write(jsonBytes)
+	return err
 }
 
 func WriteJSON(w http.ResponseWriter, obj interface{}) error {

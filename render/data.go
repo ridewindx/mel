@@ -7,10 +7,12 @@ type Data struct {
 	Data        []byte
 }
 
+var _ Render = Data{}
+
 func (r Data) Render(w http.ResponseWriter) error {
 	if len(r.ContentType) > 0 {
-		w.Header()["Content-Type"] = []string{r.ContentType}
+		writeContentType(w, r.ContentType)
 	}
-	w.Write(r.Data)
-	return nil
+	_, err := w.Write(r.Data)
+	return err
 }

@@ -10,7 +10,9 @@ type YAML struct {
 	Data interface{}
 }
 
-var yamlContentType = []string{"application/x-yaml; charset=utf-8"}
+var _ Render = YAML{}
+
+const yamlContentType = "application/x-yaml; charset=utf-8"
 
 func (r YAML) Render(w http.ResponseWriter) error {
 	writeContentType(w, yamlContentType)
@@ -20,6 +22,6 @@ func (r YAML) Render(w http.ResponseWriter) error {
 		return err
 	}
 
-	w.Write(bytes)
-	return nil
+	_, err = w.Write(bytes)
+	return err
 }
