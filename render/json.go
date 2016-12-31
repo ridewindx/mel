@@ -5,28 +5,16 @@ import (
 	"net/http"
 )
 
-type (
-	JSON struct {
-		Data interface{}
-	}
-
-	IndentedJSON struct {
-		Data interface{}
-	}
-)
-
-var _ Render = JSON{}
-var _ Render = IndentedJSON{}
-
 const jsonContentType = "application/json; charset=utf-8"
 
-func (r JSON) Render(w http.ResponseWriter) error {
-	return WriteJSON(w, r.Data)
+func WriteJSON(w http.ResponseWriter, obj interface{}) error {
+	writeContentType(w, jsonContentType)
+	return json.NewEncoder(w).Encode(obj)
 }
 
-func (r IndentedJSON) Render(w http.ResponseWriter) error {
+func WriteIndentedJSON(w http.ResponseWriter, obj interface{}) error {
 	writeContentType(w, jsonContentType)
-	jsonBytes, err := json.MarshalIndent(r.Data, "", "    ")
+	jsonBytes, err := json.MarshalIndent(obj, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -34,7 +22,10 @@ func (r IndentedJSON) Render(w http.ResponseWriter) error {
 	return err
 }
 
-func WriteJSON(w http.ResponseWriter, obj interface{}) error {
-	writeContentType(w, jsonContentType)
-	return json.NewEncoder(w).Encode(obj)
+func (r *Renderer) JSON(obj interface{}, indented ...bool) error {
+	if len(indented) > 0 && indented[0] {
+		return WriteIndentedJSON(r.writer, obj)
+	} else {
+		return WriteJSON(r.writer, obj)
+	}
 }

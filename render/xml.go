@@ -5,15 +5,13 @@ import (
 	"net/http"
 )
 
-type XML struct {
-	Data interface{}
-}
-
-var Render = XML{}
-
 const xmlContentType = "application/xml; charset=utf-8"
 
-func (r XML) Render(w http.ResponseWriter) error {
+func WriteXML(w http.ResponseWriter, obj interface{}) error {
 	writeContentType(w, xmlContentType)
-	return xml.NewEncoder(w).Encode(r.Data)
+	return xml.NewEncoder(w).Encode(obj)
+}
+
+func (r *Renderer) XML(obj interface{}) error {
+	return WriteXML(r.writer, obj)
 }

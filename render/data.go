@@ -2,17 +2,14 @@ package render
 
 import "net/http"
 
-type Data struct {
-	ContentType string
-	Data        []byte
+func WriteData(w http.ResponseWriter, contentType string, data []byte) error {
+	if len(contentType) > 0 {
+		writeContentType(w, contentType)
+	}
+	_, err := w.Write(data)
+	return err
 }
 
-var _ Render = Data{}
-
-func (r Data) Render(w http.ResponseWriter) error {
-	if len(r.ContentType) > 0 {
-		writeContentType(w, r.ContentType)
-	}
-	_, err := w.Write(r.Data)
-	return err
+func (r *Renderer) Data(contentType string, data []byte) error {
+	return WriteData(r.writer, contentType, data)
 }

@@ -7,6 +7,7 @@ import (
     "net"
     "net/url"
     "github.com/ridewindx/mel/render"
+    "fmt"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
@@ -22,6 +23,8 @@ type Context struct {
     mel *Mel
     Keys map[string]interface{}
     Errors errors
+
+    renderer render.Renderer
 }
 
 func NewContext() *Context {
@@ -269,11 +272,40 @@ func (c *Context) Cookie(name string) (string, error) {
     return url.QueryUnescape(cookie.Value)
 }
 
-func (c *Context) Render(code int, r render.Render) {
-    c.Status(code)
-    if err := r.Render(c.Writer); err != nil {
-        panic(err) // TODO
+func (c *Context) renderer() *render.Renderer {
+    return render.New(c.Writer)
+}
+
+func (c *Context) Render(contentType string, data []byte) error {
+    return c.renderer().Data(contentType, data)
+}
+
+func (c *Context) Text(format string, data ...interface{}) error {
+    return c.renderer().Text(format, data...)
+}
+
+func (c *Context) HTML(name string, obj interface{}) error {
+    return c.renderer().HTML(c.mel.Template, name, obj)
+}
+
+func (c *Context) JSON(status int, obj interface{}, indented ...bool) error {
+    return c.renderer().JSON(obj, indented)
+}
+
+func (c *Context) XML(status int, obj interface{}) error {
+    return c.renderer().XML(obj)
+}
+
+func (c *Context) YAML(status int, obj interface{}) error {
+    return c.renderer().YAML(obj)
+}
+
+// Redirect returns a HTTP redirect to the specific location.
+func (c *Context) Redirect(code int, location string) {
+    if (code < 300 || code > 308) && code != 201 {
+        panic(fmt.Sprintf("Cannot redirect with status code %d", code))
     }
+    http.Redirect(c.Writer, c.Request, location, code)
 }
 
 func (c *Context) File(filePath string) {

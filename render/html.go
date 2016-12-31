@@ -5,63 +5,16 @@ import (
 	"net/http"
 )
 
-type (
-	HTMLRender interface {
-		Instance(string, interface{}) Render
-	}
-
-	HTMLProduction struct {
-		Template *template.Template
-	}
-
-	HTMLDebug struct {
-		Files []string
-		Glob  string
-	}
-
-	HTML struct {
-		Template *template.Template
-		Name     string
-		Data     interface{}
-	}
-)
-
-var _ HTMLRender = HTMLDebug{}
-var _ HTMLRender = HTMLProduction{}
-var _ Render = HTML{}
-
 const htmlContentType = "text/html; charset=utf-8"
 
-func (r HTMLProduction) Instance(name string, data interface{}) Render {
-	return HTML{
-		Template: r.Template,
-		Name:     name,
-		Data:     data,
-	}
-}
-
-func (r HTMLDebug) Instance(name string, data interface{}) Render {
-	return HTML{
-		Template: r.loadTemplate(),
-		Name:     name,
-		Data:     data,
-	}
-}
-
-func (r HTMLDebug) loadTemplate() *template.Template {
-	if len(r.Files) > 0 {
-		return template.Must(template.ParseFiles(r.Files...))
-	}
-	if len(r.Glob) > 0 {
-		return template.Must(template.ParseGlob(r.Glob))
-	}
-	panic("the HTML debug render was created without files or glob pattern")
-}
-
-func (r HTML) Render(w http.ResponseWriter) error {
+func WriteHTML(w http.ResponseWriter, template *template.Template, name string, obj interface{}) error {
 	writeContentType(w, htmlContentType)
-	if len(r.Name) == 0 {
-		return r.Template.Execute(w, r.Data)
+	if len(name) == 0 {
+		return template.Execute(w, obj)
 	}
-	return r.Template.ExecuteTemplate(w, r.Name, r.Data)
+	return template.ExecuteTemplate(w, name, obj)
+}
+
+func (r *Renderer) HTML(template *template.Template, name string, obj interface{}) error {
+	return WriteHTML(r.writer, template, name, obj)
 }
