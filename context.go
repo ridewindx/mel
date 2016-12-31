@@ -8,6 +8,8 @@ import (
     "net/url"
     "github.com/ridewindx/mel/render"
     "fmt"
+    "github.com/manucorporat/sse"
+    "io"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
@@ -276,7 +278,7 @@ func (c *Context) renderer() *render.Renderer {
     return render.New(c.Writer)
 }
 
-func (c *Context) Render(contentType string, data []byte) error {
+func (c *Context) Data(contentType string, data []byte) error {
     return c.renderer().Data(contentType, data)
 }
 
@@ -311,3 +313,30 @@ func (c *Context) Redirect(code int, location string) {
 func (c *Context) File(filePath string) {
     http.ServeFile(c.Writer, c.Request, filePath)
 }
+
+// SSE writes a Server-Sent Event into the body stream.
+func (c *Context) SSE(name string, message interface{}) error {
+	event := sse.Event{
+        Event: name,
+        Data:  message,
+    }
+    return event.Render(c.Writer)
+}
+
+func (c *Context) Stream(step func(w io.Writer) bool) {
+    w := c.Writer
+    clientGone := w.CloseNotify()
+    for {
+        select {
+        case <-clientGone:
+            return
+        default:
+            keepOpen := step(w)
+            w.Flush()
+            if !keepOpen {
+                return
+            }
+        }
+    }
+}
+
