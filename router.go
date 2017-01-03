@@ -106,8 +106,8 @@ type router struct {
 	trees map[string]*node
 }
 
-func NewRouter() (r *router) {
-	r = &router{
+func NewRouter() *router {
+	r := &router{
         routerGroup{
 			basePath: "/",
 		},
@@ -120,7 +120,7 @@ func NewRouter() (r *router) {
 		r.trees[m] = &node{}
 	}
 
-	return
+	return r
 }
 
 var specialBytes = []byte(`.\+*?|[]{}^$`)

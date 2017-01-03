@@ -10,6 +10,7 @@ import (
     "fmt"
     "github.com/manucorporat/sse"
     "io"
+    "time"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
@@ -29,10 +30,10 @@ type Context struct {
     renderer render.Renderer
 }
 
-func NewContext() *Context {
-    return &Context{
-        index: -1,
-    }
+func (c *Context) init(w http.ResponseWriter, req *http.Request) {
+    c.Writer.ResponseWriter = w
+    c.Request = req
+    c.index = -1
 }
 
 // Next executes the pending handlers in the chain inside the calling handler.
@@ -340,3 +341,25 @@ func (c *Context) Stream(step func(w io.Writer) bool) {
     }
 }
 
+func (c *Context) Deadline() (deadline time.Time, ok bool) {
+    return
+}
+
+func (c *Context) Done() <-chan struct{} {
+    return nil
+}
+
+func (c *Context) Err() error {
+    return nil
+}
+
+func (c *Context) Value(key interface{}) interface{} {
+    if key == 0 {
+        return c.Request
+    }
+    if keyAsString, ok := key.(string); ok {
+        val, _ := c.Get(keyAsString)
+        return val
+    }
+    return nil
+}
