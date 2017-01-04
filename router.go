@@ -44,6 +44,24 @@ func newRoute(kind RouteKind, method reflect.Value) *Route {
 	}
 }
 
+func (r *Route) execute(ctx *Context) {
+
+
+	var args []reflect.Value
+	switch r.kind {
+	case FuncRoute:
+	case FuncRepReqRoute:
+		args = []reflect.Value{reflect.ValueOf(ctx.Writer), reflect.ValueOf(ctx.Request)}
+	case FuncRepRoute:
+		args = []reflect.Value{reflect.ValueOf(ctx.Writer)}
+	case FuncReqRoute:
+		args = []reflect.Value{reflect.ValueOf(ctx.Request)}
+	case FuncCtxRoute:
+		args = []reflect.Value{reflect.ValueOf(ctx)}
+	}
+	r.method.Call(args)
+}
+
 type Router interface {
 	AddRoute(methods interface{}, path string, handler interface{}, middlewares ...Handler)
 	Match(requestPath, method string) (*Route, Params)
@@ -503,7 +521,7 @@ func (r *router) addStruct(methods map[string]string, path string, structPtr int
 	}
 }
 
-func (r *router) AddRoute(methods interface{}, path string, object interface{}, handlers ...Handler) {
+func (r *router) AddRoute(methods interface{}, path string, target interface{}, handlers ...Handler) {
 	assert(path[0] == '/', "Path must begin with '/'")
 	assert(len(handlers) > 0, "There must be at least one handler")
 
@@ -517,16 +535,16 @@ func (r *router) AddRoute(methods interface{}, path string, object interface{}, 
 		panic("Invalid HTTP methods")
 	}
 
-	v := reflect.ValueOf(object)
+	v := reflect.ValueOf(target)
 
 	if v.Kind() == reflect.Func {
-		r.addFunc(ms, path, object, handlers)
+		r.addFunc(ms, path, target, handlers)
 	} else if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Struct {
 		var mm = make(map[string]string)
 		for _, m := range ms {
 			mm[m] = strings.Title(strings.ToLower(m))
 		}
-		r.addStruct(mm, path, object, handlers)
+		r.addStruct(mm, path, target, handlers)
 	} else {
 		panic("Invalid route handler")
 	}
