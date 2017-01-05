@@ -45,21 +45,23 @@ func newRoute(kind RouteKind, method reflect.Value) *Route {
 }
 
 func (r *Route) execute(ctx *Context) {
-
-
-	var args []reflect.Value
-	switch r.kind {
-	case FuncRoute:
-	case FuncRepReqRoute:
-		args = []reflect.Value{reflect.ValueOf(ctx.Writer), reflect.ValueOf(ctx.Request)}
-	case FuncRepRoute:
-		args = []reflect.Value{reflect.ValueOf(ctx.Writer)}
-	case FuncReqRoute:
-		args = []reflect.Value{reflect.ValueOf(ctx.Request)}
-	case FuncCtxRoute:
-		args = []reflect.Value{reflect.ValueOf(ctx)}
+	target := func(ctx *Context) {
+		var args []reflect.Value
+		switch r.kind {
+		case FuncRoute:
+		case FuncRepReqRoute:
+			args = []reflect.Value{reflect.ValueOf(ctx.Writer), reflect.ValueOf(ctx.Request)}
+		case FuncRepRoute:
+			args = []reflect.Value{reflect.ValueOf(ctx.Writer)}
+		case FuncReqRoute:
+			args = []reflect.Value{reflect.ValueOf(ctx.Request)}
+		case FuncCtxRoute:
+			args = []reflect.Value{reflect.ValueOf(ctx)}
+		}
+		r.method.Call(args)
 	}
-	r.method.Call(args)
+
+	ctx.handlers = append(r.handlers, target)
 }
 
 type Router interface {
@@ -119,20 +121,20 @@ func (e nodes) Less(i, j int) bool {
 }
 
 type router struct {
-    routerGroup
+	routesGroup
 
 	trees map[string]*node
 }
 
 func NewRouter() *router {
 	r := &router{
-        routerGroup{
+        routesGroup{
 			basePath: "/",
 		},
 		trees: make(map[string]*node),
 	}
 
-	r.routerGroup.router = r
+	r.routesGroup.router = r
 
 	for _, m := range Methods {
 		r.trees[m] = &node{}

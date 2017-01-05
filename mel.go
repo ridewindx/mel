@@ -6,13 +6,16 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"github.com/gin-gonic/gin/binding"
 )
+
+var default404Body = []byte("404 page not found")
+var default405Body = []byte("405 method not allowed")
 
 type Handler func(*Context)
 
 type Mel struct {
 	*router
-	handlers []Handler
 	pool     sync.Pool
 
 	RedirectTrailingSlash bool
@@ -97,55 +100,42 @@ func (mel *Mel) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := mel.pool.Get().(*Context)
 	c.init(w, req)
 
-	mel.handleHTTPRequest(c)
+	mel.handle(c)
 
 	mel.pool.Put(c)
 }
 
-func (mel *Mel) handleHTTPRequest(ctx *Context) {
+func (mel *Mel) handle(ctx *Context) {
 	httpMethod := ctx.Request.Method
 	path := ctx.Request.URL.Path
 
-	// Find root of the tree for the given HTTP method
-	t := mel.trees
-	for i, tl := 0, len(t); i < tl; i++ {
-		if t[i].method == httpMethod {
-			root := t[i].root
-			// Find route in tree
-			handlers, params, tsr := root.getValue(path, ctx.Params)
-			if handlers != nil {
-				ctx.handlers = handlers
-				ctx.Params = params
-				ctx.Next()
-				ctx.writermem.WriteHeaderNow()
-				return
-
-			} else if httpMethod != "CONNECT" && path != "/" {
-				if tsr && engine.RedirectTrailingSlash {
-					redirectTrailingSlash(ctx)
-					return
-				}
-				if engine.RedirectFixedPath && redirectFixedPath(ctx, root, engine.RedirectFixedPath) {
-					return
-				}
-			}
-			break
+	route, params := mel.router.Match(httpMethod, path)
+	if route != nil {
+		route.execute(ctx)
+		ctx.Params = params
+		ctx.Next()
+		return
+	} else if httpMethod != "CONNECT" && path != "/" {
+		if mel.RedirectTrailingSlash {
+			return
+		}
+		if mel.RedirectFixedPath {
+			return
 		}
 	}
 
-	// TODO: unit test
-	if engine.HandleMethodNotAllowed {
-		for _, tree := range engine.trees {
-			if tree.method != httpMethod {
-				if handlers, _, _ := tree.root.getValue(path, nil); handlers != nil {
-					ctx.handlers = engine.allNoMethod
-					serveError(ctx, 405, default405Body)
-					return
-				}
-			}
-		}
+	if mel.HandleMethodNotAllowed {
+
 	}
-	ctx.handlers = engine.allNoRoute
-	serveError(ctx, 404, default404Body)
+}
+
+func serveError(c *Context, code int, message []byte) {
+	c.Next()
+
+	if !c.Writer.Written() {
+		c.Writer.Header()["Content-Type"] = binding.MIMEPlain
+		c.Writer.WriteHeader(code)
+		c.Writer.Write(message)
+	}
 }
 
