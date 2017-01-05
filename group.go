@@ -55,8 +55,8 @@ func (group *routesGroup) handle(httpMethod, relativePath string, handlers []int
 	}
 
 	target := handlers[-1]
-	middlewares := make([]Handler, 0, len(handlers) - 1)
-	for _, h := range handlers[:-1] {
+	middlewares := make([]Handler, 0, len(handlers)-1)
+	for _, h := range handlers[:len(handlers)-1] {
 		middlewares = append(middlewares, h.(Handler))
 	}
 

@@ -139,3 +139,20 @@ func serveError(c *Context, code int, message []byte) {
 	}
 }
 
+func redirectTrailingSlash(c *Context) {
+	req := c.Request
+	path := req.URL.Path
+	code := 301 // Permanent redirect, request with GET method
+	if req.Method != "GET" {
+		code = 307
+	}
+
+	if len(path) > 1 && path[len(path)-1] == '/' {
+		req.URL.Path = path[:len(path)-1]
+	} else {
+		req.URL.Path = path + "/"
+	}
+	debugPrint("redirecting request %d: %s --> %s", code, path, req.URL.String())
+	http.Redirect(c.Writer, req, req.URL.String(), code)
+}
+
