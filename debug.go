@@ -13,13 +13,13 @@ func init() {
 // IsDebugging returns true if the framework is running in debug mode.
 // Use SetMode(gin.Release) to switch to disable the debug mode.
 func IsDebugging() bool {
-	return ginMode == debugCode
+	return true
 }
 
-func debugPrintRoute(httpMethod, absolutePath string, handlers HandlersChain) {
+func debugPrintRoute(httpMethod, absolutePath string, handlers []Handler) {
 	if IsDebugging() {
 		nuHandlers := len(handlers)
-		handlerName := nameOfFunction(handlers.Last())
+		handlerName := nameOfFunction(handlers[nuHandlers-1])
 		debugPrint("%-6s %-25s --> %s (%d handlers)\n", httpMethod, absolutePath, handlerName, nuHandlers)
 	}
 }

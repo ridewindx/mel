@@ -16,18 +16,16 @@ import (
 const abortIndex int8 = math.MaxInt8 / 2
 
 type Context struct {
-    Request *http.Request
-    Writer responseWriter
+    Request  *http.Request
+    Writer   *responseWriter
 
-    Params Params
+    Params   Params
     handlers []Handler
-    index int8
+    index    int8
 
-    mel *Mel
-    Keys map[string]interface{}
-    Errors errors
-
-    renderer render.Renderer
+    mel      *Mel
+    Keys     map[string]interface{}
+    Errors
 }
 
 func (c *Context) init(w http.ResponseWriter, req *http.Request) {
@@ -292,7 +290,7 @@ func (c *Context) HTML(name string, obj interface{}) error {
 }
 
 func (c *Context) JSON(status int, obj interface{}, indented ...bool) error {
-    return c.renderer().JSON(obj, indented)
+    return c.renderer().JSON(obj, indented...)
 }
 
 func (c *Context) XML(status int, obj interface{}) error {

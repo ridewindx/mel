@@ -5,7 +5,7 @@ import (
 )
 
 type Renderer struct {
-	writer   http.ResponseWriter
+	writer http.ResponseWriter
 }
 
 func New(w http.ResponseWriter) *Renderer {

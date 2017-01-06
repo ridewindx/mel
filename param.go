@@ -19,7 +19,7 @@ type Params []Param
 
 var errParamNotExist = errors.New("Param not exist")
 
-var _ Set = &Params{}
+// var _ Set = &Params{}
 
 func (p *Params) Get(key string) string {
 	if len(key) == 0 {
@@ -266,51 +266,51 @@ func (p *Params) MustBool(key string, defaults ...bool) bool {
 
 // Param returns the value of the URL param.
 func (ctx *Context) Param(key string, defaults ...string) string {
-	return ctx.Params().MustString(key, defaults...)
+	return ctx.Params.MustString(key, defaults...)
 }
 
 func (ctx *Context) ParamStrings(key string, defaults ...[]string) []string {
-	return ctx.Params().MustStrings(key, defaults...)
+	return ctx.Params.MustStrings(key, defaults...)
 }
 
 func (ctx *Context) ParamEscape(key string, defaults ...string) string {
-	return ctx.Params().MustEscape(key, defaults...)
+	return ctx.Params.MustEscape(key, defaults...)
 }
 
 func (ctx *Context) ParamInt(key string, defaults ...int) int {
-	return ctx.Params().MustInt(key, defaults...)
+	return ctx.Params.MustInt(key, defaults...)
 }
 
 func (ctx *Context) ParamInt32(key string, defaults ...int32) int32 {
-	return ctx.Params().MustInt32(key, defaults...)
+	return ctx.Params.MustInt32(key, defaults...)
 }
 
 func (ctx *Context) ParamInt64(key string, defaults ...int64) int64 {
-	return ctx.Params().MustInt64(key, defaults...)
+	return ctx.Params.MustInt64(key, defaults...)
 }
 
 func (ctx *Context) ParamUint(key string, defaults ...uint) uint {
-	return ctx.Params().MustUint(key, defaults...)
+	return ctx.Params.MustUint(key, defaults...)
 }
 
 func (ctx *Context) ParamUint32(key string, defaults ...uint32) uint32 {
-	return ctx.Params().MustUint32(key, defaults...)
+	return ctx.Params.MustUint32(key, defaults...)
 }
 
 func (ctx *Context) ParamUint64(key string, defaults ...uint64) uint64 {
-	return ctx.Params().MustUint64(key, defaults...)
+	return ctx.Params.MustUint64(key, defaults...)
 }
 
 func (ctx *Context) ParamFloat32(key string, defaults ...float32) float32 {
-	return ctx.Params().MustFloat32(key, defaults...)
+	return ctx.Params.MustFloat32(key, defaults...)
 }
 
 func (ctx *Context) ParamFloat64(key string, defaults ...float64) float64 {
-	return ctx.Params().MustFloat64(key, defaults...)
+	return ctx.Params.MustFloat64(key, defaults...)
 }
 
 func (ctx *Context) ParamBool(key string, defaults ...bool) bool {
-	return ctx.Params().MustBool(key, defaults...)
+	return ctx.Params.MustBool(key, defaults...)
 }
 
 func (p *Params) Set(key, value string) {
@@ -331,6 +331,7 @@ func (p *Params) Set(key, value string) {
 	*p = append(*p, Param{key, value})
 }
 
+/*
 func Param() HandlerFunc {
 	return func(ctx *Context) {
 		if action := ctx.Action(); action != nil {
@@ -341,3 +342,4 @@ func Param() HandlerFunc {
 		ctx.Next()
 	}
 }
+*/

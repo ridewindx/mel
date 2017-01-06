@@ -37,12 +37,14 @@ type Route struct {
 	handlers []Handler
 }
 
+/*
 func newRoute(kind RouteKind, method reflect.Value) *Route {
 	return &Route{
 		kind: kind,
 		method: method,
 	}
 }
+*/
 
 func (r *Route) execute(ctx *Context) {
 	target := func(ctx *Context) {
@@ -128,7 +130,7 @@ type router struct {
 
 func NewRouter() *router {
 	r := &router{
-        routesGroup{
+        routesGroup: routesGroup{
 			basePath: "/",
 		},
 		trees: make(map[string]*node),
@@ -462,7 +464,7 @@ func (r *router) addFunc(methods []string, path string, function interface{}, ha
 
 	route := &Route{
 		kind: kind,
-		method: function,
+		method: v,
 		handlers: handlers,
 	}
 	for _, m := range methods {
@@ -511,13 +513,13 @@ func (r *router) addStruct(methods map[string]string, path string, structPtr int
 			panic(fmt.Sprintln("Invalid function type", methods, path, mt))
 		}
 
-		var f reflect.Value = func(in []reflect.Value) []reflect.Value {
-			in = append([]reflect.Value{structPtr}, in...)
+		f := func(in []reflect.Value) []reflect.Value {
+			in = append([]reflect.Value{v}, in...)
 			return method.Func.Call(in)
 		}
 		r.addRoute(verb, path, &Route{
 			kind: kind,
-			method: f,
+			method: reflect.ValueOf(f),
 			handlers: handlers,
 		})
 	}

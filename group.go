@@ -8,20 +8,20 @@ import (
 )
 
 type RoutesGroup interface {
-    Group(string, ...Handler) *RoutesGroup
+    Group(string, ...Handler) RoutesGroup
 
 	Use(...Handler)
 
-	Handle(string, interface{}, ...Handler)
-	Get(string, interface{}, ...Handler)
-	Post(string, interface{}, ...Handler)
-	Head(string, interface{}, ...Handler)
-	Delete(string, interface{}, ...Handler)
-	Put(string, interface{}, ...Handler)
-	Options(string, interface{}, ...Handler)
-	Trace(string, interface{}, ...Handler)
-	Patch(string, interface{}, ...Handler)
-	Any(string, interface{}, ...Handler)
+	Handle(string, string, ...interface{})
+	Get(string, ...interface{})
+	Post(string, ...interface{})
+	Head(string, ...interface{})
+	Delete(string, ...interface{})
+	Put(string, ...interface{})
+	Options(string, ...interface{})
+	Trace(string, ...interface{})
+	Patch(string, ...interface{})
+	Any(string, ...interface{})
 }
 
 // routesGroup is used internally to configure router,
@@ -36,7 +36,7 @@ var _ RoutesGroup = &routesGroup{}
 
 // Group creates a new router group.
 // You should add all the routes that have common middlwares or the same path prefix.
-func (group *routesGroup) Group(relativePath string, handlers ...Handler) *RoutesGroup {
+func (group *routesGroup) Group(relativePath string, handlers ...Handler) RoutesGroup {
 	return &routesGroup{
 		basePath: joinPaths(group.basePath, relativePath),
 		handlers: group.combineHandlers(handlers),
@@ -50,13 +50,14 @@ func (group *routesGroup) Use(middlewares ...Handler) {
 }
 
 func (group *routesGroup) handle(httpMethod, relativePath string, handlers []interface{}) {
-	if len(handlers) == 0 {
+	num := len(handlers)
+	if num == 0 {
 		panic("Routing target not found")
 	}
 
-	target := handlers[-1]
-	middlewares := make([]Handler, 0, len(handlers)-1)
-	for _, h := range handlers[:len(handlers)-1] {
+	target := handlers[num-1]
+	middlewares := make([]Handler, 0, num-1)
+	for _, h := range handlers[:num-1] {
 		middlewares = append(middlewares, h.(Handler))
 	}
 

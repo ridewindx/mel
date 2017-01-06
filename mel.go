@@ -133,7 +133,7 @@ func serveError(c *Context, code int, message []byte) {
 	c.Next()
 
 	if !c.Writer.Written() {
-		c.Writer.Header()["Content-Type"] = binding.MIMEPlain
+		c.Writer.Header().Set("Content-Type", binding.MIMEPlain)
 		c.Writer.WriteHeader(code)
 		c.Writer.Write(message)
 	}
@@ -155,4 +155,3 @@ func redirectTrailingSlash(c *Context) {
 	debugPrint("redirecting request %d: %s --> %s", code, path, req.URL.String())
 	http.Redirect(c.Writer, req, req.URL.String(), code)
 }
-
