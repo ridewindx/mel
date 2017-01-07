@@ -21,6 +21,8 @@ var Methods = []string{
 	"PATCH",
 }
 
+var AllowCustomMethod = true
+
 type RouteKind uint8
 
 const (
@@ -82,15 +84,17 @@ const (
 
 type node struct {
 	kind     nodeKind
-	route    *Route
-	regexp   *regexp.Regexp
-	content  string
+	segment  string // path segment
+	regexp   *regexp.Regexp // non-null when kind is regexNode
+
 	children nodes
-	path     string
+
+	path     string // the entire path, only presents in the "leaf" node
+	route    *Route
 }
 
 func (n *node) equal(o *node) bool {
-	if n.kind == o.kind && n.content == o.content {
+	if n.kind == o.kind && n.segment == o.segment {
 		return true
 	}
 	return false
@@ -112,7 +116,7 @@ func (e nodes) Swap(i, j int) {
 func (e nodes) Less(i, j int) bool {
 	if e[i].kind == staticNode {
 		if e[j].kind == staticNode {
-			return len(e[i].content) > len(e[j].content)
+			return len(e[i].segment) > len(e[j].segment)
 		}
 		return true
 	}
@@ -129,18 +133,19 @@ type router struct {
 }
 
 func NewRouter() *router {
+	trees := make(map[string]*node)
+	for _, m := range Methods {
+		trees[m] = &node{}
+	}
+
 	r := &router{
         routesGroup: routesGroup{
 			basePath: "/",
 		},
-		trees: make(map[string]*node),
+		trees: trees,
 	}
 
 	r.routesGroup.router = r
-
-	for _, m := range Methods {
-		r.trees[m] = &node{}
-	}
 
 	return r
 }
@@ -172,7 +177,7 @@ func parsePath(path string) []*node {
 			if bracket == 0 && i > start {
 				nodes = append(nodes, &node{
 					kind:    staticNode,
-					content: path[start:i],
+					segment: path[start:i],
 				})
 				start = i
 			}
@@ -181,7 +186,7 @@ func parsePath(path string) []*node {
 		} else if path[i] == ':' {
 			nodes = append(nodes, &node{
 				kind:    staticNode,
-				content: path[start : i-bracket],
+				segment: path[start : i-bracket],
 			})
 
 			start = i
@@ -208,13 +213,13 @@ func parsePath(path string) []*node {
 			if len(re) > 0 {
 				nodes = append(nodes, &node{
 					kind:    regexNode,
-					content: path[start : i-len(re)],
+					segment: path[start : i-len(re)],
 					regexp:  regexp.MustCompile("(" + re + ")"),
 				})
 			} else {
 				nodes = append(nodes, &node{
 					kind:    namedNode,
-					content: path[start:i],
+					segment: path[start:i],
 				})
 			}
 
@@ -228,7 +233,7 @@ func parsePath(path string) []*node {
 		} else if path[i] == '*' {
 			nodes = append(nodes, &node{
 				kind:    staticNode,
-				content: path[start : i-bracket],
+				segment: path[start : i-bracket],
 			})
 
 			start = i
@@ -246,7 +251,7 @@ func parsePath(path string) []*node {
 
 			nodes = append(nodes, &node{
 				kind:    anyNode,
-				content: path[start:i],
+				segment: path[start:i],
 			})
 
 			i = i + bracket
@@ -263,7 +268,7 @@ func parsePath(path string) []*node {
 
 	nodes = append(nodes, &node{
 		kind:    staticNode,
-		content: path[start:i],
+		segment: path[start:i],
 	})
 
 	return nodes
@@ -285,34 +290,45 @@ func validateNodes(nodes []*node) bool {
 }
 
 func (r *router) addRoute(method, path string, route *Route) {
-	nodes := parsePath(path)
-	num := len(nodes)
+	segments := parsePath(path)
+	num := len(segments)
 
-	leafNode := nodes[num-1]
+	leafNode := segments[num-1]
 	leafNode.route = route
 	leafNode.path = path
 
-	if !validateNodes(nodes) {
+	if !validateNodes(segments) {
 		panic("Any non-static route should have static route successor: " + path)
 	}
 
-	p := r.trees[method]
+	p, ok := r.trees[method]
+	if !ok {
+		if !AllowCustomMethod {
+			panic("Not allow custom method: " + method)
+		}
+		p = &node{}
+		r.trees[method] = p
+	}
+
+	i := 0
 
 	outer:
-	for i := 0; i < num; i++ {
+	for ; i < num; i++ {
 		for _, node := range p.children {
-			if node.equal(nodes[i]) {
+			if node.equal(segments[i]) {
 				if i == num-1 {
+					// override leaf node
 					node.route = route
+					node.path = path
 				}
 				p = node
 				continue outer
 			}
 		}
 
-		p.children = append(p.children, nodes[i])
-		sort.Sort(p.children)
-		p = nodes[i]
+		p.children = append(p.children, segments[i])
+		sort.Sort(p.children) // sort by priority
+		p = segments[i]
 	}
 }
 
@@ -325,7 +341,10 @@ func printNodes(i int, nodes []*node) {
 			fmt.Print("┗", "  ")
 		}
 
-		fmt.Print(n.content)
+		fmt.Print(n.segment)
+		if len(n.path) != 0 {
+			fmt.Printf("  [ %s ]", n.path)
+		}
 		if n.route != nil {
 			fmt.Print("  ", n.route.method.Type())
 			fmt.Printf("  %p", n.route.method.Interface())
@@ -336,10 +355,10 @@ func printNodes(i int, nodes []*node) {
 }
 
 func (r *router) printTrees() {
-	for _, method := range Methods {
-		if len(r.trees[method].children) > 0 {
+	for method, n := range r.trees {
+		if len(n.children) > 0 {
 			fmt.Println(method)
-			printNodes(1, r.trees[method].children)
+			printNodes(1, n.children)
 			fmt.Println()
 		}
 	}
@@ -347,13 +366,13 @@ func (r *router) printTrees() {
 
 func (r *router) matchNode(n *node, path string, params Params) (*node, Params) {
 	if n.kind == staticNode {
-		if strings.HasPrefix(path, n.content) {
-			if len(path) == len(n.content) {
+		if strings.HasPrefix(path, n.segment) {
+			if len(path) == len(n.segment) {
 				return n, params
 			}
 
 			for _, c := range n.children {
-				newN, newParams := r.matchNode(c, path[len(n.content):], params)
+				newN, newParams := r.matchNode(c, path[len(n.segment):], params)
 				if newN != nil {
 					return newN, newParams
 				}
@@ -361,26 +380,26 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 		}
 	} else if n.kind == anyNode {
 		for _, c := range n.children {
-			idx := strings.LastIndex(path, c.content)
+			idx := strings.LastIndex(path, c.segment)
 			if idx > -1 {
-				params = append(params, Param{n.content, path[:idx]})
+				params = append(params, Param{n.segment, path[:idx]})
 				return r.matchNode(c, path[idx:], params)
 			}
 		}
 
-		return n, append(params, Param{n.content, path})
+		return n, append(params, Param{n.segment, path})
 	} else if n.kind == namedNode {
 		for _, c := range n.children {
-			idx := strings.Index(path, c.content)
+			idx := strings.Index(path, c.segment)
 			if idx > -1 {
-				params = append(params, Param{n.content, path[:idx]})
+				params = append(params, Param{n.segment, path[:idx]})
 				return r.matchNode(c, path[idx:], params)
 			}
 		}
 
 		idx := strings.IndexByte(path, '/')
 		if idx == -1 {
-			params = append(params, Param{n.content, path})
+			params = append(params, Param{n.segment, path})
 			return n, params
 		}
 	} else if n.kind == regexNode {
@@ -390,7 +409,7 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 				for _, c := range n.children {
 					newN, newParams := r.matchNode(c, path[idx:], params)
 					if newN != nil {
-						return newN, append(Params{Param{n.content, path[:idx]}}, newParams...)
+						return newN, append(Params{Param{n.segment, path[:idx]}}, newParams...)
 					}
 				}
 			}
@@ -399,15 +418,15 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 		}
 
 		for _, c := range n.children {
-			idx := strings.Index(path, c.content)
+			idx := strings.Index(path, c.segment)
 			if idx > -1 && n.regexp.MatchString(path[:idx]) {
-				params = append(params, Param{n.content, path[:idx]})
+				params = append(params, Param{n.segment, path[:idx]})
 				return r.matchNode(c, path[idx:], params)
 			}
 		}
 
 		if n.regexp.MatchString(path) {
-			params = append(params, Param{n.content, path})
+			params = append(params, Param{n.segment, path})
 			return n, params
 		}
 	}
