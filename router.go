@@ -68,10 +68,12 @@ func (r *Route) execute(ctx *Context) {
 	ctx.handlers = append(r.handlers, target)
 }
 
+/*
 type Router interface {
 	AddRoute(methods interface{}, path string, handler interface{}, middlewares ...Handler)
 	Match(requestPath, method string) (*Route, Params)
 }
+*/
 
 type nodeKind byte
 
@@ -126,19 +128,19 @@ func (e nodes) Less(i, j int) bool {
 	return i < j
 }
 
-type router struct {
+type Router struct {
 	routesGroup
 
 	trees map[string]*node
 }
 
-func NewRouter() *router {
+func NewRouter() *Router {
 	trees := make(map[string]*node)
 	for _, m := range Methods {
 		trees[m] = &node{}
 	}
 
-	r := &router{
+	r := &Router{
         routesGroup: routesGroup{
 			basePath: "/",
 		},
@@ -289,7 +291,7 @@ func validateNodes(nodes []*node) bool {
 	return true
 }
 
-func (r *router) addRoute(method, path string, route *Route) {
+func (r *Router) addRoute(method, path string, route *Route) {
 	segments := parsePath(path)
 	num := len(segments)
 
@@ -354,7 +356,7 @@ func printNodes(i int, nodes []*node) {
 	}
 }
 
-func (r *router) printTrees() {
+func (r *Router) printTrees() {
 	for method, n := range r.trees {
 		if len(n.children) > 0 {
 			fmt.Println(method)
@@ -364,7 +366,7 @@ func (r *router) printTrees() {
 	}
 }
 
-func (r *router) matchNode(n *node, path string, params Params) (*node, Params) {
+func (r *Router) matchNode(n *node, path string, params Params) (*node, Params) {
 	if n.kind == staticNode {
 		if strings.HasPrefix(path, n.segment) {
 			if len(path) == len(n.segment) {
@@ -434,7 +436,7 @@ func (r *router) matchNode(n *node, path string, params Params) (*node, Params) 
 	return nil, params
 }
 
-func (r *router) Match(method, path string) (*Route, Params) {
+func (r *Router) Match(method, path string) (*Route, Params) {
 	cn, ok := r.trees[method]
 	if !ok {
 		return nil, nil
@@ -451,7 +453,7 @@ func (r *router) Match(method, path string) (*Route, Params) {
 	return nil, nil
 }
 
-func (r *router) addFunc(methods []string, path string, function interface{}, handlers []Handler) {
+func (r *Router) addFunc(methods []string, path string, function interface{}, handlers []Handler) {
 	v := reflect.ValueOf(function)
     t := v.Type()
 
@@ -491,7 +493,7 @@ func (r *router) addFunc(methods []string, path string, function interface{}, ha
 	}
 }
 
-func (r *router) addStruct(methods map[string]string, path string, structPtr interface{}, handlers []Handler) {
+func (r *Router) addStruct(methods map[string]string, path string, structPtr interface{}, handlers []Handler) {
 	v := reflect.ValueOf(structPtr)
 	t := v.Type()
 
@@ -544,7 +546,7 @@ func (r *router) addStruct(methods map[string]string, path string, structPtr int
 	}
 }
 
-func (r *router) AddRoute(methods interface{}, path string, target interface{}, handlers ...Handler) {
+func (r *Router) AddRoute(methods interface{}, path string, target interface{}, handlers ...Handler) {
 	assert(path[0] == '/', "Path must begin with '/'")
 	assert(len(handlers) > 0, "There must be at least one handler")
 

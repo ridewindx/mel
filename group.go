@@ -29,7 +29,7 @@ type RoutesGroup interface {
 type routesGroup struct {
 	basePath string
 	handlers []Handler
-	router *router
+	router *Router
 }
 
 var _ RoutesGroup = &routesGroup{}

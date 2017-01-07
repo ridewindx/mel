@@ -15,7 +15,7 @@ var default405Body = []byte("405 method not allowed")
 type Handler func(*Context)
 
 type Mel struct {
-	*router
+	*Router
 	pool     sync.Pool
 
 	RedirectTrailingSlash bool
@@ -29,7 +29,7 @@ type Mel struct {
 func New() *Mel {
 	debugPrintWARNINGNew()
 	mel := &Mel{
-		router: NewRouter(),
+		Router: NewRouter(),
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      false,
 		HandleMethodNotAllowed: false,
@@ -109,7 +109,7 @@ func (mel *Mel) handle(ctx *Context) {
 	httpMethod := ctx.Request.Method
 	path := ctx.Request.URL.Path
 
-	route, params := mel.router.Match(httpMethod, path)
+	route, params := mel.Router.Match(httpMethod, path)
 	if route != nil {
 		route.execute(ctx)
 		ctx.Params = params
