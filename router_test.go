@@ -109,5 +109,5 @@ func TestAddRoutes(t *testing.T) {
 	for path := range parsedResult {
 		router.addRoute("GETA", path, nil)
 	}
-	router.printTrees()
+	router.PrintTrees()
 }

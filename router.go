@@ -356,7 +356,7 @@ func printNodes(i int, nodes []*node) {
 	}
 }
 
-func (r *Router) printTrees() {
+func (r *Router) PrintTrees() {
 	for method, n := range r.trees {
 		if len(n.children) > 0 {
 			fmt.Println(method)
@@ -546,7 +546,7 @@ func (r *Router) addStruct(methods map[string]string, path string, structPtr int
 	}
 }
 
-func (r *Router) AddRoute(methods interface{}, path string, target interface{}, handlers ...Handler) {
+func (r *Router) Register(methods interface{}, path string, target interface{}, handlers ...Handler) {
 	assert(path[0] == '/', "Path must begin with '/'")
 	assert(len(handlers) > 0, "There must be at least one handler")
 

@@ -63,7 +63,7 @@ func (group *routesGroup) handle(httpMethod, relativePath string, handlers []int
 
 	absolutePath := joinPaths(group.basePath, relativePath)
     middlewares = group.combineHandlers(middlewares)
-	group.router.AddRoute(httpMethod, absolutePath, target, middlewares...)
+	group.router.Register(httpMethod, absolutePath, target, middlewares...)
 }
 
 // Handle registers a new request handle and middleware with the given path and method.
