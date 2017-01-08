@@ -345,11 +345,10 @@ func printNodes(i int, nodes []*node) {
 
 		fmt.Print(n.segment)
 		if len(n.path) != 0 {
-			fmt.Printf("  [ %s ]", n.path)
+			fmt.Printf("  path[ %s ]", n.path)
 		}
 		if n.route != nil {
-			fmt.Print("  ", n.route.method.Type())
-			fmt.Printf("  %p", n.route.method.Interface())
+			fmt.Printf("  func[ %p ]", n.route.method.Interface())
 		}
 		fmt.Println()
 		printNodes(i+1, n.children)
@@ -546,9 +545,17 @@ func (r *Router) addStruct(methods map[string]string, path string, structPtr int
 	}
 }
 
+func removeTrailingSlash(path string) string {
+	path = strings.TrimRight(path, "/")
+	if path == "" {
+		path = "/"
+	}
+	return path
+}
+
 func (r *Router) Register(methods interface{}, path string, target interface{}, handlers ...Handler) {
 	assert(path[0] == '/', "Path must begin with '/'")
-	assert(len(handlers) > 0, "There must be at least one handler")
+	// path = removeTrailingSlash(path)
 
 	var ms []string
 	switch methods.(type) {
