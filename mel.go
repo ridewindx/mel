@@ -109,17 +109,18 @@ func (mel *Mel) handle(ctx *Context) {
 	httpMethod := ctx.Request.Method
 	path := ctx.Request.URL.Path
 
-	route, params, _ := mel.Router.Match(httpMethod, path)
+	route, params, tsr := mel.Router.Match(httpMethod, path)
 	if route != nil {
 		route.execute(ctx)
 		ctx.Params = params
 		ctx.Next()
 		return
 	} else if httpMethod != "CONNECT" && path != "/" {
-		if mel.RedirectTrailingSlash {
+		if tsr && mel.RedirectTrailingSlash {
+			redirectTrailingSlash(ctx)
 			return
 		}
-		if mel.RedirectFixedPath {
+		if mel.RedirectFixedPath && redirectFixedPath(ctx, mel.Router, mel.RedirectTrailingSlash) {
 			return
 		}
 	}
@@ -147,11 +148,33 @@ func redirectTrailingSlash(c *Context) {
 		code = 307
 	}
 
-	if len(path) > 1 && path[len(path)-1] == '/' {
-		req.URL.Path = path[:len(path)-1]
-	} else {
-		req.URL.Path = path + "/"
-	}
+	assert(len(path) > 1 && path[len(path)-1] == '/', "Path has no trailing slash")
+	req.URL.Path = path[:len(path)-1]
 	debugPrint("redirecting request %d: %s --> %s", code, path, req.URL.String())
 	http.Redirect(c.Writer, req, req.URL.String(), code)
+}
+
+func redirectFixedPath(ctx *Context, router *Router, trailingSlash bool) bool {
+	req := ctx.Request
+	httpMethod := req.Method
+	path := req.URL.Path
+
+	fixedPath := cleanPath(path)
+	route, _, tsr := router.Match(httpMethod, fixedPath)
+	if route == nil {
+		if !(tsr && trailingSlash) {
+			return false
+		}
+
+		fixedPath = fixedPath[:len(fixedPath) - 1]
+	}
+
+	code := 301 // Permanent redirect, request with GET method
+	if req.Method != "GET" {
+		code = 307
+	}
+	req.URL.Path = string(fixedPath)
+	debugPrint("redirecting request %d: %s --> %s", code, path, req.URL.String())
+	http.Redirect(ctx.Writer, req, req.URL.String(), code)
+	return true
 }

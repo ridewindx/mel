@@ -553,7 +553,7 @@ func (r *Router) addStruct(methods map[string]string, path string, structPtr int
 func (r *Router) Register(methods interface{}, path string, target interface{}, handlers ...Handler) {
 	assert(path[0] == '/', "Path must begin with '/'")
 
-	if path != "/" && path[len(path)-1] == '/' {
+	if len(path) > 1 && path[len(path)-1] == '/' {
 		if r.RemoveTrailingSlash {
 			path = strings.TrimRight(path, "/")
 		} else {
