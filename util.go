@@ -45,6 +45,15 @@ func assert(guard bool, text string) {
 	}
 }
 
+func filterFlags(content string) string {
+	for i, char := range content {
+		if char == ' ' || char == ';' {
+			return content[:i]
+		}
+	}
+	return content
+}
+
 func resolveAddress(addr []string) string {
 	switch len(addr) {
 	case 0:

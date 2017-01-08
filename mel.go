@@ -18,6 +18,11 @@ type Mel struct {
 	*Router
 	pool     sync.Pool
 
+	allNoRoute  []Handler
+	allNoMethod []Handler
+	noRoute     []Handler
+	noMethod    []Handler
+
 	RedirectTrailingSlash bool
 	RedirectFixedPath bool
 	HandleMethodNotAllowed bool
@@ -53,6 +58,37 @@ func (mel *Mel) LoadTemplateGlob(pattern string) {
 
 func (mel *Mel) LoadTemplates(files ...string) {
 	mel.SetTemplate(template.Must(template.ParseFiles(files...)))
+}
+
+// NoRoute sets handlers for requests that match no route.
+// It return a 404 code by default.
+func (mel *Mel) NoRoute(handlers ...Handler) {
+	mel.noRoute = handlers
+	mel.rebuildNoRouteHandlers()
+}
+
+// NoMethod sets handlers for requests that match a route for another HTTP method.
+// It return a 405 code by default.
+func (mel *Mel) NoMethod(handlers ...Handler) {
+	mel.noMethod = handlers
+	mel.rebuildNoMethodHandlers()
+}
+
+// Use attachs global middlewares to the app. The middlewares attached though Use() will be
+// included in the handlers chain for every single request. Even 404, 405, static files...
+// For example, this is the right place for a logger or error management middleware.
+func (mel *Mel) Use(middleware ...Handler) {
+	mel.Router.Use(middleware...)
+	mel.rebuildNoRouteHandlers()
+	mel.rebuildNoMethodHandlers()
+}
+
+func (mel *Mel) rebuildNoRouteHandlers() {
+	mel.allNoRoute = mel.combineHandlers(mel.noRoute)
+}
+
+func (mel *Mel) rebuildNoMethodHandlers() {
+	mel.allNoMethod = mel.combineHandlers(mel.noMethod)
 }
 
 // Run attaches `mel` to a http.Server and starts listening and serving HTTP requests.
@@ -126,17 +162,29 @@ func (mel *Mel) handle(ctx *Context) {
 	}
 
 	if mel.HandleMethodNotAllowed {
-
+		for method := range mel.Router.trees {
+			if method != httpMethod {
+				route, _, _ := mel.Router.Match(method, path)
+				if route != nil {
+					ctx.handlers = mel.allNoMethod
+					serveError(ctx, 405, default405Body)
+					return
+				}
+			}
+		}
 	}
+
+	ctx.handlers = mel.allNoRoute
+	serveError(ctx, 404, default404Body)
 }
 
-func serveError(c *Context, code int, message []byte) {
+func serveError(c *Context, code int, defaultMessage []byte) {
 	c.Next()
 
 	if !c.Writer.Written() {
 		c.Writer.Header().Set("Content-Type", binding.MIMEPlain)
 		c.Writer.WriteHeader(code)
-		c.Writer.Write(message)
+		c.Writer.Write(defaultMessage)
 	}
 }
 

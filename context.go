@@ -7,6 +7,7 @@ import (
     "net"
     "net/url"
     "github.com/ridewindx/mel/render"
+    "github.com/ridewindx/mel/binding"
     "fmt"
     "github.com/manucorporat/sse"
     "io"
@@ -195,6 +196,34 @@ func (c *Context) GetPostForms(key string) ([]string, bool) {
     return []string{}, false
 }
 
+// Bind checks the Content-Type to select a binding engine automatically,
+// Depending the "Content-Type" header different bindings are used:
+// 		"application/json" --> JSON binding
+// 		"application/xml"  --> XML binding
+// otherwise --> returns an error
+// It parses the request's body as JSON if Content-Type == "application/json" using JSON or XML as a JSON input.
+// It decodes the json payload into the struct specified as a pointer.
+// Like ParseBody() but this method also writes a 400 error if the json is not valid.
+func (c *Context) Bind(obj interface{}) error {
+    b := binding.Default(c.Request.Method, c.ContentType())
+    return c.BindWith(obj, b)
+}
+
+// BindJSON is a shortcut for c.BindWith(obj, binding.JSON)
+func (c *Context) BindJSON(obj interface{}) error {
+    return c.BindWith(obj, binding.JSON)
+}
+
+// BindWith binds the passed struct pointer using the specified binding engine.
+// See the binding package.
+func (c *Context) BindWith(obj interface{}, b binding.Binding) error {
+    if err := b.Bind(c.Request, obj); err != nil {
+        c.AbortWithError(400, err).Type = ErrorTypeBind
+        return err
+    }
+    return nil
+}
+
 // ClientIP implements a best effort algorithm to return the real client IP.
 // It parses X-Real-IP and X-Forwarded-For in order to work properly with
 // reverse-proxies such as nginx or haproxy.
@@ -217,6 +246,11 @@ func (c *Context) ClientIP() string {
         return ip
     }
     return ""
+}
+
+// ContentType returns the Content-Type header of the request.
+func (c *Context) ContentType() string {
+    return filterFlags(c.requestHeader("Content-Type"))
 }
 
 func (c *Context) requestHeader(key string) string {
