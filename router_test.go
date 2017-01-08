@@ -199,7 +199,7 @@ func TestRoutingSingle(t *testing.T) {
 		// router.PrintTrees()
 
 		for _, expect := range expects {
-			handler, params := router.Match("GET", expect.path)
+			handler, params, _ := router.Match("GET", expect.path)
 			if expect.match {
 				if handler == nil {
 					t.Fatal(path, expect, "handler should not be nil")
@@ -365,7 +365,7 @@ func TestRoutingMultiple(t *testing.T) {
 		router.PrintTrees()
 
 		for _, expect := range item.results {
-			handler, params := router.Match("GET", expect.path)
+			handler, params, _ := router.Match("GET", expect.path)
 			if expect.match {
 				if handler == nil {
 					t.Fatal(item.paths, expect, "handler should not be nil")

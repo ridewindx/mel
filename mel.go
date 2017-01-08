@@ -109,7 +109,7 @@ func (mel *Mel) handle(ctx *Context) {
 	httpMethod := ctx.Request.Method
 	path := ctx.Request.URL.Path
 
-	route, params := mel.Router.Match(httpMethod, path)
+	route, params, _ := mel.Router.Match(httpMethod, path)
 	if route != nil {
 		route.execute(ctx)
 		ctx.Params = params

@@ -21,8 +21,6 @@ var Methods = []string{
 	"PATCH",
 }
 
-var AllowCustomMethod = true
-
 type RouteKind uint8
 
 const (
@@ -38,15 +36,6 @@ type Route struct {
 	method reflect.Value
 	handlers []Handler
 }
-
-/*
-func newRoute(kind RouteKind, method reflect.Value) *Route {
-	return &Route{
-		kind: kind,
-		method: method,
-	}
-}
-*/
 
 func (r *Route) execute(ctx *Context) {
 	target := func(ctx *Context) {
@@ -67,13 +56,6 @@ func (r *Route) execute(ctx *Context) {
 
 	ctx.handlers = append(r.handlers, target)
 }
-
-/*
-type Router interface {
-	AddRoute(methods interface{}, path string, handler interface{}, middlewares ...Handler)
-	Match(requestPath, method string) (*Route, Params)
-}
-*/
 
 type nodeKind byte
 
@@ -132,6 +114,9 @@ type Router struct {
 	routesGroup
 
 	trees map[string]*node
+
+	AllowCustomMethod bool
+	RemoveTrailingSlash bool
 }
 
 func NewRouter() *Router {
@@ -145,6 +130,8 @@ func NewRouter() *Router {
 			basePath: "/",
 		},
 		trees: trees,
+		AllowCustomMethod: true,
+		RemoveTrailingSlash: true,
 	}
 
 	r.routesGroup.router = r
@@ -305,7 +292,7 @@ func (r *Router) addRoute(method, path string, route *Route) {
 
 	p, ok := r.trees[method]
 	if !ok {
-		if !AllowCustomMethod {
+		if !r.AllowCustomMethod {
 			panic("Not allow custom method: " + method)
 		}
 		p = &node{}
@@ -365,18 +352,24 @@ func (r *Router) PrintTrees() {
 	}
 }
 
-func (r *Router) matchNode(n *node, path string, params Params) (*node, Params) {
+func (r *Router) matchNode(n *node, path string, params Params) (*node, Params, bool) {
+	tsr := false
 	if n.kind == staticNode {
 		if strings.HasPrefix(path, n.segment) {
 			if len(path) == len(n.segment) {
-				return n, params
+				return n, params, false
 			}
 
 			for _, c := range n.children {
-				newN, newParams := r.matchNode(c, path[len(n.segment):], params)
+				newN, newParams, newTsr := r.matchNode(c, path[len(n.segment):], params)
 				if newN != nil {
-					return newN, newParams
+					return newN, newParams, false
 				}
+				tsr = newTsr
+			}
+
+			if path == n.segment + "/" {
+				tsr = true
 			}
 		}
 	} else if n.kind == anyNode {
@@ -388,7 +381,7 @@ func (r *Router) matchNode(n *node, path string, params Params) (*node, Params) 
 			}
 		}
 
-		return n, append(params, Param{n.segment, path})
+		return n, append(params, Param{n.segment, path}), false
 	} else if n.kind == namedNode {
 		for _, c := range n.children {
 			idx := strings.Index(path, c.segment)
@@ -401,55 +394,67 @@ func (r *Router) matchNode(n *node, path string, params Params) (*node, Params) 
 		idx := strings.IndexByte(path, '/')
 		if idx == -1 {
 			params = append(params, Param{n.segment, path})
-			return n, params
+			return n, params, false
+		}
+
+		if idx == len(path)-1 {
+			tsr = true
 		}
 	} else if n.kind == regexNode {
 		idx := strings.IndexByte(path, '/')
 		if idx > -1 {
 			if n.regexp.MatchString(path[:idx]) {
 				for _, c := range n.children {
-					newN, newParams := r.matchNode(c, path[idx:], params)
+					newN, newParams, newTsr := r.matchNode(c, path[idx:], params)
 					if newN != nil {
-						return newN, append(Params{Param{n.segment, path[:idx]}}, newParams...)
+						return newN, append(Params{Param{n.segment, path[:idx]}}, newParams...), false
 					}
+					tsr = newTsr
+				}
+
+				if idx == len(path)-1 {
+					tsr = true
+				}
+			}
+		} else {
+			for _, c := range n.children {
+				idx := strings.Index(path, c.segment)
+				if idx > -1 && n.regexp.MatchString(path[:idx]) {
+					params = append(params, Param{n.segment, path[:idx]})
+					return r.matchNode(c, path[idx:], params)
 				}
 			}
 
-			return nil, params
-		}
-
-		for _, c := range n.children {
-			idx := strings.Index(path, c.segment)
-			if idx > -1 && n.regexp.MatchString(path[:idx]) {
-				params = append(params, Param{n.segment, path[:idx]})
-				return r.matchNode(c, path[idx:], params)
+			if n.regexp.MatchString(path) {
+				params = append(params, Param{n.segment, path})
+				return n, params, false
 			}
-		}
-
-		if n.regexp.MatchString(path) {
-			params = append(params, Param{n.segment, path})
-			return n, params
 		}
 	}
 
-	return nil, params
+	return nil, nil, tsr
 }
 
-func (r *Router) Match(method, path string) (*Route, Params) {
+func (r *Router) Match(method, path string) (*Route, Params, bool) {
 	cn, ok := r.trees[method]
 	if !ok {
-		return nil, nil
+		return nil, nil, false
 	}
 
 	params := make(Params, 0, strings.Count(path, "/"))
+	tsr := false
+
 	for _, n := range cn.children {
-		newN, newParams := r.matchNode(n, path, params)
+		newN, newParams, newTsr := r.matchNode(n, path, params)
 		if newN != nil {
-			return newN.route, newParams
+			return newN.route, newParams, tsr
+		}
+		if newTsr {
+			tsr = true
 		}
 	}
 
-	return nil, nil
+	return nil, nil, tsr
 }
 
 func (r *Router) addFunc(methods []string, path string, function interface{}, handlers []Handler) {
@@ -545,17 +550,16 @@ func (r *Router) addStruct(methods map[string]string, path string, structPtr int
 	}
 }
 
-func removeTrailingSlash(path string) string {
-	path = strings.TrimRight(path, "/")
-	if path == "" {
-		path = "/"
-	}
-	return path
-}
-
 func (r *Router) Register(methods interface{}, path string, target interface{}, handlers ...Handler) {
 	assert(path[0] == '/', "Path must begin with '/'")
-	// path = removeTrailingSlash(path)
+
+	if path != "/" && path[len(path)-1] == '/' {
+		if r.RemoveTrailingSlash {
+			path = strings.TrimRight(path, "/")
+		} else {
+			panic("Path should not have trailing slash")
+		}
+	}
 
 	var ms []string
 	switch methods.(type) {
