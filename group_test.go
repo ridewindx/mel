@@ -94,3 +94,39 @@ func performRequest(r http.Handler, method, path string) *httptest.ResponseRecor
 	return w
 }
 
+func TestRouterGroupInvalidStatic(t *testing.T) {
+	router := New()
+	assert.Panics(t, func() {
+		router.StaticDir("/path/:param", "/")
+	})
+
+	assert.Panics(t, func() {
+		router.StaticDir("/path/*param", "/")
+	})
+}
+
+func TestRouterGroupInvalidStaticFile(t *testing.T) {
+	router := New()
+	assert.Panics(t, func() {
+		router.StaticFile("/path/:param", "favicon.ico")
+	})
+
+	assert.Panics(t, func() {
+		router.StaticFile("/path/*param", "favicon.ico")
+	})
+}
+
+func TestRouterGroupTooManyHandlers(t *testing.T) {
+	router := New()
+	handlers1 := make([]Handler, 40)
+	router.Use(handlers1...)
+
+	handlers2 := make([]Handler, 26)
+	assert.Panics(t, func() {
+		router.Use(handlers2...)
+	})
+	assert.Panics(t, func() {
+		router.Get("/", nil, handlers2...)
+	})
+}
+

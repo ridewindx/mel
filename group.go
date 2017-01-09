@@ -30,21 +30,10 @@ func (group *RoutesGroup) Use(middlewares ...Handler) {
 	group.Handlers = append(group.Handlers, middlewares...)
 }
 
-func (group *RoutesGroup) handle(httpMethod, relativePath string, handlers []interface{}) {
-	num := len(handlers)
-	if num == 0 {
-		panic("Routing target not found")
-	}
-
-	target := handlers[num-1]
-	middlewares := make([]Handler, 0, num-1)
-	for _, h := range handlers[:num-1] {
-		middlewares = append(middlewares, h.(Handler))
-	}
-
+func (group *RoutesGroup) handle(httpMethod, relativePath string, target interface{}, handlers []Handler) {
 	absolutePath := joinPaths(group.BasePath, relativePath)
-    middlewares = group.combineHandlers(middlewares)
-	group.router.Register(httpMethod, absolutePath, target, middlewares...)
+    handlers = group.combineHandlers(handlers)
+	group.router.Register(httpMethod, absolutePath, target, handlers...)
 }
 
 // Handle registers a new request handle and middleware with the given path and method.
@@ -54,55 +43,55 @@ func (group *RoutesGroup) handle(httpMethod, relativePath string, handlers []int
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (group *RoutesGroup) Handle(httpMethod, relativePath string, handlers ...interface{}) {
+func (group *RoutesGroup) Handle(httpMethod, relativePath string, target interface{}, handlers []Handler) {
     if matches, err := regexp.MatchString("^[A-Z]+$", httpMethod); !matches || err != nil {
 		panic("HTTP method " + httpMethod + " is invalid")
 	}
-	group.handle(httpMethod, relativePath, handlers)
+	group.handle(httpMethod, relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Get(relativePath string, handlers ...interface{}) {
-	group.handle("GET", relativePath, handlers)
+func (group *RoutesGroup) Get(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("GET", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Post(relativePath string, handlers ...interface{}) {
-	group.handle("POST", relativePath, handlers)
+func (group *RoutesGroup) Post(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("POST", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Head(relativePath string, handlers ...interface{}) {
-	group.handle("HEAD", relativePath, handlers)
+func (group *RoutesGroup) Head(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("HEAD", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Delete(relativePath string, handlers ...interface{}) {
-	group.handle("DELETE", relativePath, handlers)
+func (group *RoutesGroup) Delete(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("DELETE", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Put(relativePath string, handlers ...interface{}) {
-	group.handle("PUT", relativePath, handlers)
+func (group *RoutesGroup) Put(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("PUT", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Options(relativePath string, handlers ...interface{}) {
-	group.handle("OPTIONS", relativePath, handlers)
+func (group *RoutesGroup) Options(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("OPTIONS", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Trace(relativePath string, handlers ...interface{}) {
-	group.handle("TRACE", relativePath, handlers)
+func (group *RoutesGroup) Trace(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("TRACE", relativePath, target, handlers)
 }
 
-func (group *RoutesGroup) Patch(relativePath string, handlers ...interface{}) {
-	group.handle("PATCH", relativePath, handlers)
+func (group *RoutesGroup) Patch(relativePath string, target interface{}, handlers ...Handler) {
+	group.handle("PATCH", relativePath, target, handlers)
 }
 
 // Any registers a route that matches all the HTTP methods.
-func (group *RoutesGroup) Any(relativePath string, handlers ...interface{}) {
-	group.Get(relativePath, handlers)
-    group.Post(relativePath, handlers)
-	group.Head(relativePath, handlers)
-	group.Delete(relativePath, handlers)
-	group.Put(relativePath, handlers)
-	group.Options(relativePath, handlers)
-	group.Trace(relativePath, handlers)
-	group.Patch(relativePath, handlers)
+func (group *RoutesGroup) Any(relativePath string, target interface{}, handlers ...Handler) {
+	group.Get(relativePath, target, handlers...)
+    group.Post(relativePath, target, handlers...)
+	group.Head(relativePath, target, handlers...)
+	group.Delete(relativePath, target, handlers...)
+	group.Put(relativePath, target, handlers...)
+	group.Options(relativePath, target, handlers...)
+	group.Trace(relativePath, target, handlers...)
+	group.Patch(relativePath, target, handlers...)
 }
 
 // StaticFile registers a single route in order to server a single file of the local filesystem.
