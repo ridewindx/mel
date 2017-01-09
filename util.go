@@ -39,7 +39,7 @@ func joinPaths(absolutePath, relativePath string) string {
 	return finalPath
 }
 
-func assert(guard bool, text string) {
+func check(guard bool, text string) {
 	if !guard {
 		panic(text)
 	}

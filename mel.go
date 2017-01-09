@@ -134,6 +134,9 @@ func (mel *Mel) RunUnix(file string) (err error) {
 // ServerHTTP implements the http.Handler interface.
 func (mel *Mel) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c := mel.pool.Get().(*Context)
+	if c == nil {
+		panic("nil context")
+	}
 	c.init(w, req)
 
 	mel.handle(c)
@@ -196,7 +199,7 @@ func redirectTrailingSlash(c *Context) {
 		code = 307
 	}
 
-	assert(len(path) > 1 && path[len(path)-1] == '/', "Path has no trailing slash")
+	check(len(path) > 1 && path[len(path)-1] == '/', "Path has no trailing slash")
 	req.URL.Path = path[:len(path)-1]
 	debugPrint("redirecting request %d: %s --> %s", code, path, req.URL.String())
 	http.Redirect(c.Writer, req, req.URL.String(), code)

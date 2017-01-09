@@ -30,6 +30,7 @@ type Context struct {
 }
 
 func (c *Context) init(w http.ResponseWriter, req *http.Request) {
+	c.Writer = &responseWriter{}
     c.Writer.ResponseWriter = w
     c.Request = req
     c.index = -1
@@ -323,15 +324,15 @@ func (c *Context) HTML(name string, obj interface{}) error {
     return c.renderer().HTML(c.mel.Template, name, obj)
 }
 
-func (c *Context) JSON(status int, obj interface{}, indented ...bool) error {
+func (c *Context) JSON(obj interface{}, indented ...bool) error {
     return c.renderer().JSON(obj, indented...)
 }
 
-func (c *Context) XML(status int, obj interface{}) error {
+func (c *Context) XML(obj interface{}) error {
     return c.renderer().XML(obj)
 }
 
-func (c *Context) YAML(status int, obj interface{}) error {
+func (c *Context) YAML(obj interface{}) error {
     return c.renderer().YAML(obj)
 }
 

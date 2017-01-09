@@ -111,7 +111,7 @@ func (e nodes) Less(i, j int) bool {
 }
 
 type Router struct {
-	routesGroup
+	RoutesGroup
 
 	trees map[string]*node
 
@@ -126,15 +126,15 @@ func NewRouter() *Router {
 	}
 
 	r := &Router{
-        routesGroup: routesGroup{
-			basePath: "/",
+        RoutesGroup: RoutesGroup{
+			BasePath: "/",
 		},
 		trees: trees,
 		AllowCustomMethod: true,
 		RemoveTrailingSlash: true,
 	}
 
-	r.routesGroup.router = r
+	r.RoutesGroup.router = r
 
 	return r
 }
@@ -551,7 +551,7 @@ func (r *Router) addStruct(methods map[string]string, path string, structPtr int
 }
 
 func (r *Router) Register(methods interface{}, path string, target interface{}, handlers ...Handler) {
-	assert(path[0] == '/', "Path must begin with '/'")
+	check(path[0] == '/', "Path must begin with '/'")
 
 	if len(path) > 1 && path[len(path)-1] == '/' {
 		if r.RemoveTrailingSlash {
