@@ -7,8 +7,6 @@ import (
 	"net/http/httptest"
 )
 
-
-
 func TestRoutesGroupBasic(t *testing.T) {
 	router := NewRouter()
 	group := router.Group("/hola", func(c *Context) {})
