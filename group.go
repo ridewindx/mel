@@ -43,7 +43,7 @@ func (group *RoutesGroup) handle(httpMethod, relativePath string, target interfa
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
-func (group *RoutesGroup) Handle(httpMethod, relativePath string, target interface{}, handlers []Handler) {
+func (group *RoutesGroup) Handle(httpMethod, relativePath string, target interface{}, handlers ...Handler) {
     if matches, err := regexp.MatchString("^[A-Z]+$", httpMethod); !matches || err != nil {
 		panic("HTTP method " + httpMethod + " is invalid")
 	}

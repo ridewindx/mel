@@ -130,3 +130,27 @@ func TestRouterGroupTooManyHandlers(t *testing.T) {
 	})
 }
 
+func TestRouterGroupBadMethod(t *testing.T) {
+	router := New()
+	assert.Panics(t, func() {
+		router.Handle("get", "/", nil)
+	})
+	assert.Panics(t, func() {
+		router.Handle(" GET", "/", nil)
+	})
+	assert.Panics(t, func() {
+		router.Handle("GET ", "/", nil)
+	})
+	assert.Panics(t, func() {
+		router.Handle("", "/", nil)
+	})
+	assert.Panics(t, func() {
+		router.Handle("PO ST", "/", nil)
+	})
+	assert.Panics(t, func() {
+		router.Handle("1GET", "/", nil)
+	})
+	assert.Panics(t, func() {
+		router.Handle("PATCh", "/", nil)
+	})
+}
