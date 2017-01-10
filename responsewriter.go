@@ -38,6 +38,13 @@ type responseWriter struct {
 
 var _ ResponseWriter = &responseWriter{}
 
+func (w *responseWriter) reset() {
+    w.ResponseWriter = nil
+    w.status = 0
+    w.size = 0
+    w.written = false
+}
+
 func (w *responseWriter) WriteHeader(status int) {
 	if w.Written() {
         // TODO: debugPrint("[WARNING] Headers were already written. Wanted to override status code %d with %d", w.status, status)

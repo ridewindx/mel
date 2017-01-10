@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 	"github.com/gin-gonic/gin/binding"
 )
 
@@ -16,7 +15,7 @@ type Handler func(*Context)
 
 type Mel struct {
 	*Router
-	pool     sync.Pool
+	pool *pool
 
 	allNoRoute  []Handler
 	allNoMethod []Handler
@@ -41,9 +40,7 @@ func New() *Mel {
 		ForwardedByClientIP:    true,
 	}
 
-	mel.pool.New = func() interface{} {
-		return &Context{mel: mel}
-	}
+	mel.pool = newPool(mel)
 
 	return mel
 }
@@ -133,11 +130,8 @@ func (mel *Mel) RunUnix(file string) (err error) {
 
 // ServerHTTP implements the http.Handler interface.
 func (mel *Mel) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	c := mel.pool.Get().(*Context)
-	if c == nil {
-		panic("nil context")
-	}
-	c.init(w, req)
+	c := mel.pool.Get()
+	c.reset(w, req)
 
 	mel.handle(c)
 

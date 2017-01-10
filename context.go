@@ -12,28 +12,61 @@ import (
     "github.com/manucorporat/sse"
     "io"
     "time"
+	"sync"
 )
 
 const abortIndex int8 = math.MaxInt8 / 2
+
+type pool struct {
+    sync.Pool
+}
+
+func (p *pool) Get() *Context {
+    c := p.Pool.Get().(*Context)
+    return c
+}
+
+func (p *pool) Put(c *Context) {
+    c.Request = nil
+    c.Writer.reset()
+	c.Params = nil
+    c.handlers = nil
+    c.index = -1
+    c.Keys = nil
+    c.Errors = nil
+
+    p.Pool.Put(c)
+}
+
+func newPool(mel *Mel) *pool {
+    var p pool
+    p.Pool.New = func() interface{} {
+        return &Context{
+            Writer: &responseWriter{},
+            index: -1,
+            mel: mel,
+        }
+    }
+    return &p
+}
 
 type Context struct {
     Request  *http.Request
     Writer   *responseWriter
 
-    Params   Params
+    Params
     handlers []Handler
     index    int8
 
-    mel      *Mel
     Keys     map[string]interface{}
     Errors
+
+    mel      *Mel
 }
 
-func (c *Context) init(w http.ResponseWriter, req *http.Request) {
-	c.Writer = &responseWriter{}
+func (c *Context) reset(w http.ResponseWriter, req *http.Request) {
     c.Writer.ResponseWriter = w
     c.Request = req
-    c.index = -1
 }
 
 // Next executes the pending handlers in the chain inside the calling handler.
