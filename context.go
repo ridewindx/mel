@@ -42,11 +42,9 @@ func (p *pool) Put(c *Context) {
 func newPool(mel *Mel) *pool {
     var p pool
     p.Pool.New = func() interface{} {
-        return &Context{
-            Writer: &responseWriter{},
-            index: preStartIndex,
-            mel: mel,
-        }
+        c := newContext()
+        c.mel = mel
+        return c
     }
     return &p
 }
@@ -63,6 +61,13 @@ type Context struct {
     Errors
 
     mel      *Mel
+}
+
+func newContext() *Context {
+    return &Context{
+        Writer: &responseWriter{},
+        index: preStartIndex,
+    }
 }
 
 func (c *Context) reset(w http.ResponseWriter, req *http.Request) {

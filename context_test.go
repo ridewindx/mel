@@ -68,4 +68,10 @@ func TestContextReset(t *testing.T) {
 	assert.Empty(t, c2.Errors.ByType(ErrorTypeAny))
 }
 
+func CreateTestContext() (c *Context, w *httptest.ResponseRecorder) {
+	w = httptest.NewRecorder()
+	c = newContext()
+	c.Writer.ResponseWriter = w
+	return
+}
 
