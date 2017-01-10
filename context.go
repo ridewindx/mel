@@ -15,6 +15,7 @@ import (
 	"sync"
 )
 
+const preStartIndex int8 = -1
 const abortIndex int8 = math.MaxInt8 / 2
 
 type pool struct {
@@ -31,7 +32,7 @@ func (p *pool) Put(c *Context) {
     c.Writer.reset()
 	c.Params = nil
     c.handlers = nil
-    c.index = -1
+    c.index = preStartIndex
     c.Keys = nil
     c.Errors = nil
 
@@ -43,7 +44,7 @@ func newPool(mel *Mel) *pool {
     p.Pool.New = func() interface{} {
         return &Context{
             Writer: &responseWriter{},
-            index: -1,
+            index: preStartIndex,
             mel: mel,
         }
     }
