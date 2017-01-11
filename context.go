@@ -194,6 +194,22 @@ func (c *Context) GetQuery(key string) (string, bool) {
     return "", false
 }
 
+// Querys returns a slice of strings for a given query key.
+// The length of the slice depends on the number of params with the given key.
+func (c *Context) Querys(key string) []string {
+    values, _ := c.GetQuerys(key)
+    return values
+}
+
+// GetQuerys returns a slice of strings for a given query key, plus
+// a boolean value whether at least one value exists for the given key.
+func (c *Context) GetQuerys(key string) ([]string, bool) {
+    if values, ok := c.Request.URL.Query()[key]; ok && len(values) > 0 {
+        return values, true
+    }
+    return []string{}, false
+}
+
 func (c *Context) PostForm(key string, defaultValue ...string) string {
     if value, ok := c.GetPostForm(key); ok {
         return value

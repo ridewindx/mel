@@ -14,6 +14,7 @@ func (formBinding) Bind(req *http.Request, obj interface{}) error {
 	if err := req.ParseForm(); err != nil {
 		return err
 	}
+	req.ParseMultipartForm(32 << 10) // 32 MB TODO:
 	if err := mapForm(obj, req.Form); err != nil {
 		return err
 	}

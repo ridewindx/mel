@@ -153,3 +153,141 @@ func TestContextQuery(t *testing.T) {
 	assert.Empty(t, value)
 	assert.Empty(t, c.PostForm("foo"))
 }
+
+func TestContextQueryAndPostForm(t *testing.T) {
+	c, _ := CreateTestContext()
+	body := bytes.NewBufferString("foo=bar&page=11&both=&foo=second")
+	c.Request, _ = http.NewRequest("POST", "/?both=GET&id=main&id=omit&array[]=first&array[]=second", body)
+	c.Request.Header.Add("Content-Type", binding.MIMEPOSTForm)
+
+	assert.Equal(t, c.PostForm("foo", "none"), "bar")
+	assert.Equal(t, c.PostForm("foo"), "bar")
+	assert.Empty(t, c.Query("foo"))
+
+	value, ok := c.GetPostForm("page")
+	assert.True(t, ok)
+	assert.Equal(t, value, "11")
+	assert.Equal(t, c.PostForm("page", "0"), "11")
+	assert.Equal(t, c.PostForm("page"), "11")
+	assert.Equal(t, c.Query("page"), "")
+
+	value, ok = c.GetPostForm("both")
+	assert.True(t, ok)
+	assert.Empty(t, value)
+	assert.Empty(t, c.PostForm("both"))
+	assert.Equal(t, c.PostForm("both", "nothing"), "")
+	assert.Equal(t, c.Query("both"), "GET")
+
+	value, ok = c.GetQuery("id")
+	assert.True(t, ok)
+	assert.Equal(t, value, "main")
+	assert.Equal(t, c.PostForm("id", "000"), "000")
+	assert.Equal(t, c.Query("id"), "main")
+	assert.Empty(t, c.PostForm("id"))
+
+	value, ok = c.GetQuery("NoKey")
+	assert.False(t, ok)
+	assert.Empty(t, value)
+	value, ok = c.GetPostForm("NoKey")
+	assert.False(t, ok)
+	assert.Empty(t, value)
+	assert.Equal(t, c.PostForm("NoKey", "nada"), "nada")
+	assert.Equal(t, c.Query("NoKey", "nothing"), "nothing")
+	assert.Empty(t, c.PostForm("NoKey"))
+	assert.Empty(t, c.Query("NoKey"))
+
+	var obj struct {
+		Foo   string   `form:"foo"`
+		ID    string   `form:"id"`
+		Page  int      `form:"page"`
+		Both  string   `form:"both"`
+		Array []string `form:"array[]"`
+	}
+	assert.NoError(t, c.Bind(&obj))
+	assert.Equal(t, obj.Foo, "bar")
+	assert.Equal(t, obj.ID, "main")
+	assert.Equal(t, obj.Page, 11)
+	assert.Equal(t, obj.Both, "")
+	assert.Equal(t, obj.Array, []string{"first", "second"})
+
+	values, ok := c.GetQuerys("array[]")
+	assert.True(t, ok)
+	assert.Equal(t, "first", values[0])
+	assert.Equal(t, "second", values[1])
+
+	values = c.Querys("array[]")
+	assert.Equal(t, "first", values[0])
+	assert.Equal(t, "second", values[1])
+
+	values = c.Querys("nokey")
+	assert.Equal(t, 0, len(values))
+
+	values = c.Querys("both")
+	assert.Equal(t, 1, len(values))
+	assert.Equal(t, "GET", values[0])
+}
+
+func TestContextPostFormMultipart(t *testing.T) {
+	c, _ := CreateTestContext()
+	c.Request = createMultipartRequest()
+
+	var obj struct {
+		Foo      string   `form:"foo"`
+		Bar      string   `form:"bar"`
+		BarAsInt int      `form:"bar"`
+		Array    []string `form:"array"`
+		ID       string   `form:"id"`
+	}
+	assert.NoError(t, c.Bind(&obj))
+	assert.Equal(t, obj.Foo, "bar")
+	assert.Equal(t, obj.Bar, "10")
+	assert.Equal(t, obj.BarAsInt, 10)
+	assert.Equal(t, obj.Array, []string{"first", "second"})
+	assert.Equal(t, obj.ID, "")
+
+	value, ok := c.GetQuery("foo")
+	assert.False(t, ok)
+	assert.Empty(t, value)
+	assert.Empty(t, c.Query("bar"))
+	assert.Equal(t, c.Query("id", "nothing"), "nothing")
+
+	value, ok = c.GetPostForm("foo")
+	assert.True(t, ok)
+	assert.Equal(t, value, "bar")
+	assert.Equal(t, c.PostForm("foo"), "bar")
+
+	value, ok = c.GetPostForm("array")
+	assert.True(t, ok)
+	assert.Equal(t, value, "first")
+	assert.Equal(t, c.PostForm("array"), "first")
+
+	assert.Equal(t, c.PostForm("bar", "nothing"), "10")
+
+	value, ok = c.GetPostForm("id")
+	assert.True(t, ok)
+	assert.Empty(t, value)
+	assert.Empty(t, c.PostForm("id"))
+	assert.Empty(t, c.PostForm("id", "nothing"))
+
+	value, ok = c.GetPostForm("nokey")
+	assert.False(t, ok)
+	assert.Empty(t, value)
+	assert.Equal(t, c.PostForm("nokey", "nothing"), "nothing")
+
+	values, ok := c.GetPostForms("array")
+	assert.True(t, ok)
+	assert.Equal(t, "first", values[0])
+	assert.Equal(t, "second", values[1])
+
+	values = c.PostForms("array")
+	assert.Equal(t, "first", values[0])
+	assert.Equal(t, "second", values[1])
+
+	values = c.PostForms("nokey")
+	assert.Equal(t, 0, len(values))
+
+	values = c.PostForms("foo")
+	assert.Equal(t, 1, len(values))
+	assert.Equal(t, "bar", values[0])
+}
+
