@@ -75,3 +75,81 @@ func CreateTestContext() (c *Context, w *httptest.ResponseRecorder) {
 	return
 }
 
+func TestContextHandlers(t *testing.T) {
+	c, _ := CreateTestContext()
+	assert.Nil(t, c.handlers)
+
+	c.handlers = []Handler{}
+	assert.NotNil(t, c.handlers)
+}
+
+func TestContextSetGet(t *testing.T) {
+	c, _ := CreateTestContext()
+	c.Set("foo", "bar")
+
+	value, exists := c.Get("foo")
+	assert.Equal(t, value, "bar")
+	assert.True(t, exists)
+
+	value, exists = c.Get("foo2")
+	assert.Nil(t, value)
+	assert.False(t, exists)
+
+	assert.Equal(t, c.MustGet("foo"), "bar")
+	assert.Panics(t, func() { c.MustGet("no_exist") })
+}
+
+func TestContextSetGetValues(t *testing.T) {
+	c, _ := CreateTestContext()
+	c.Set("string", "this is a string")
+	c.Set("int32", int32(-42))
+	c.Set("int64", int64(42424242424242))
+	c.Set("uint64", uint64(42))
+	c.Set("float32", float32(4.2))
+	c.Set("float64", 4.2)
+	var a interface{} = 1
+	c.Set("intInterface", a)
+
+	assert.Exactly(t, c.MustGet("string").(string), "this is a string")
+	assert.Exactly(t, c.MustGet("int32").(int32), int32(-42))
+	assert.Exactly(t, c.MustGet("int64").(int64), int64(42424242424242))
+	assert.Exactly(t, c.MustGet("uint64").(uint64), uint64(42))
+	assert.Exactly(t, c.MustGet("float32").(float32), float32(4.2))
+	assert.Exactly(t, c.MustGet("float64").(float64), 4.2)
+	assert.Exactly(t, c.MustGet("intInterface").(int), 1)
+}
+
+func TestContextQuery(t *testing.T) {
+	c, _ := CreateTestContext()
+	c.Request, _ = http.NewRequest("GET", "http://example.com/?foo=bar&page=10&id=", nil)
+
+	value, ok := c.GetQuery("foo")
+	assert.True(t, ok)
+	assert.Equal(t, value, "bar")
+	assert.Equal(t, c.Query("foo", "none"), "bar")
+	assert.Equal(t, c.Query("foo"), "bar")
+
+	value, ok = c.GetQuery("page")
+	assert.True(t, ok)
+	assert.Equal(t, value, "10")
+	assert.Equal(t, c.Query("page", "0"), "10")
+	assert.Equal(t, c.Query("page"), "10")
+
+	value, ok = c.GetQuery("id")
+	assert.True(t, ok)
+	assert.Empty(t, value)
+	assert.Equal(t, c.Query("id", "nada"), "")
+	assert.Empty(t, c.Query("id"))
+
+	value, ok = c.GetQuery("NoKey")
+	assert.False(t, ok)
+	assert.Empty(t, value)
+	assert.Equal(t, c.Query("NoKey", "nada"), "nada")
+	assert.Empty(t, c.Query("NoKey"))
+
+	// postform should not mess
+	value, ok = c.GetPostForm("page")
+	assert.False(t, ok)
+	assert.Empty(t, value)
+	assert.Empty(t, c.PostForm("foo"))
+}
