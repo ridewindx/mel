@@ -69,3 +69,5 @@ func resolveAddress(addr []string) string {
 		panic("Too much parameters for address")
 	}
 }
+
+type Map map[string]interface{}

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/stretchr/testify/assert"
 
+	"strings"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,9 @@ import (
 	"mime/multipart"
 	"github.com/ridewindx/mel/binding"
 	"fmt"
+	"html/template"
+	"github.com/ridewindx/mel/render"
+	"github.com/manucorporat/sse"
 )
 
 func createMultipartRequest() *http.Request {
@@ -289,5 +293,147 @@ func TestContextPostFormMultipart(t *testing.T) {
 	values = c.PostForms("foo")
 	assert.Equal(t, 1, len(values))
 	assert.Equal(t, "bar", values[0])
+}
+
+func TestContextSetCookie(t *testing.T) {
+	c, _ := CreateTestContext()
+	c.SetCookie(&Cookie{
+		Name: "user",
+		Value: "gin",
+		Path: "/",
+		Domain: "localhost",
+		MaxAge: 1,
+		Secure: true,
+		HttpOnly: true,
+	})
+	assert.Equal(t, c.Writer.Header().Get("Set-Cookie"),
+		         "user=gin; Path=/; Domain=localhost; Max-Age=1; HttpOnly; Secure")
+}
+
+func TestContextGetCookie(t *testing.T) {
+	c, _ := CreateTestContext()
+	c.Request, _ = http.NewRequest("GET", "/get", nil)
+	c.Request.Header.Set("Cookie", "user=gin")
+	cookie, _ := c.Cookie("user")
+	assert.Equal(t, cookie, "gin")
+}
+
+func TestContextRenderJSON(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Status(201)
+	c.JSON(Map{"foo": "bar"})
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "{\"foo\":\"bar\"}\n")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "application/json; charset=utf-8")
+}
+
+func TestContextRenderAPIJSON(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Header("Content-Type", "application/vnd.api+json")
+	c.Status(201)
+	c.JSON(Map{"foo": "bar"})
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "{\"foo\":\"bar\"}\n")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "application/vnd.api+json")
+}
+
+func TestContextRenderIndentedJSON(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Status(201)
+	c.JSON(Map{"foo": "bar", "bar": "foo", "nested": Map{"foo": "bar"}}, true)
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), `{
+    "bar": "foo",
+    "foo": "bar",
+    "nested": {
+        "foo": "bar"
+    }
+}`)
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "application/json; charset=utf-8")
+}
+
+func TestContextRenderHTML(t *testing.T) {
+	c, w := CreateTestContext()
+	templ := template.Must(template.New("t").Parse(`Hello {{.name}}`))
+	r := New()
+	r.SetTemplate(templ)
+	c.mel = r
+
+	c.Status(201)
+	c.HTML("t", Map{"name": "alexandernyquist"})
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "Hello alexandernyquist")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "text/html; charset=utf-8")
+}
+
+func TestContextRenderXML(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Status(201)
+	c.XML(render.XMLMap{"foo": "bar"})
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "<map><foo>bar</foo></map>")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "application/xml; charset=utf-8")
+}
+
+func TestContextRenderString(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Status(201)
+	c.Text("test %s %d", "string", 2)
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "test string 2")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "text/plain; charset=utf-8")
+}
+
+func TestContextRenderHTMLString(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Status(201)
+	c.Text("<html>%s %d</html>", "string", 3)
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "<html>string 3</html>")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "text/html; charset=utf-8")
+}
+
+func TestContextRenderData(t *testing.T) {
+	c, w := CreateTestContext()
+	c.Status(201)
+	c.Data("text/csv", []byte(`foo,bar`))
+
+	assert.Equal(t, w.Code, 201)
+	assert.Equal(t, w.Body.String(), "foo,bar")
+	assert.Equal(t, w.HeaderMap.Get("Content-Type"), "text/csv")
+}
+
+func TestContextRenderSSE(t *testing.T) {
+	c, w := CreateTestContext()
+	c.SSE("float", 1.5)
+	e := sse.Event{
+		Id:   "123",
+		Data: "text",
+	}
+	e.Render(c.Writer)
+	c.SSE("chat", Map{
+		"foo": "bar",
+		"bar": "foo",
+	})
+
+	assert.Equal(t, strings.Replace(w.Body.String(), " ", "", -1),
+					strings.Replace(`event:float
+data:1.5
+
+id:123
+data:text
+
+event:chat
+data:{"bar":"foo","foo":"bar"}
+
+`, " ", "", -1))
 }
 
