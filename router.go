@@ -570,6 +570,9 @@ func (r *Router) Register(methods interface{}, path string, target interface{}, 
 	default:
 		panic("Invalid HTTP methods")
 	}
+	for _, m := range ms {
+		check(len(m) > 0, "HTTP method can not be empty")
+	}
 
 	v := reflect.ValueOf(target)
 
