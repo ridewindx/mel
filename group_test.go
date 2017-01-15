@@ -43,8 +43,7 @@ func performRequestInGroup(t *testing.T, method string) {
 	assert.Equal(t, login.BasePath, "/v1/login/")
 
 	handler := func(c *Context) {
-		c.Status(400)
-		c.Text("the method was %s and index %d", c.Request.Method, c.index)
+		c.Text(400, "the method was %s and index %d", c.Request.Method, c.index)
 	}
 
 	switch method {

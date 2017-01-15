@@ -367,27 +367,33 @@ func (c *Context) renderer() *render.Renderer {
     return render.New(c.Writer)
 }
 
-func (c *Context) Data(contentType string, data []byte) error {
+func (c *Context) Data(status int, contentType string, data []byte) error {
+    c.Status(status)
     return c.renderer().Data(contentType, data)
 }
 
-func (c *Context) Text(format string, data ...interface{}) error {
+func (c *Context) Text(status int, format string, data ...interface{}) error {
+    c.Status(status)
     return c.renderer().Text(format, data...)
 }
 
-func (c *Context) HTML(name string, obj interface{}) error {
+func (c *Context) HTML(status int, name string, obj interface{}) error {
+    c.Status(status)
     return c.renderer().HTML(c.mel.Template, name, obj)
 }
 
-func (c *Context) JSON(obj interface{}, indented ...bool) error {
+func (c *Context) JSON(status int, obj interface{}, indented ...bool) error {
+    c.Status(status)
     return c.renderer().JSON(obj, indented...)
 }
 
-func (c *Context) XML(obj interface{}) error {
+func (c *Context) XML(status int, obj interface{}) error {
+    c.Status(status)
     return c.renderer().XML(obj)
 }
 
-func (c *Context) YAML(obj interface{}) error {
+func (c *Context) YAML(status int, obj interface{}) error {
+    c.Status(status)
     return c.renderer().YAML(obj)
 }
 

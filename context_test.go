@@ -321,8 +321,7 @@ func TestContextGetCookie(t *testing.T) {
 
 func TestContextRenderJSON(t *testing.T) {
 	c, w := CreateTestContext()
-	c.Status(201)
-	c.JSON(Map{"foo": "bar"})
+	c.JSON(201, Map{"foo": "bar"})
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "{\"foo\":\"bar\"}\n")
@@ -332,8 +331,7 @@ func TestContextRenderJSON(t *testing.T) {
 func TestContextRenderAPIJSON(t *testing.T) {
 	c, w := CreateTestContext()
 	c.Header("Content-Type", "application/vnd.api+json")
-	c.Status(201)
-	c.JSON(Map{"foo": "bar"})
+	c.JSON(201, Map{"foo": "bar"})
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "{\"foo\":\"bar\"}\n")
@@ -342,8 +340,7 @@ func TestContextRenderAPIJSON(t *testing.T) {
 
 func TestContextRenderIndentedJSON(t *testing.T) {
 	c, w := CreateTestContext()
-	c.Status(201)
-	c.JSON(Map{"foo": "bar", "bar": "foo", "nested": Map{"foo": "bar"}}, true)
+	c.JSON(201, Map{"foo": "bar", "bar": "foo", "nested": Map{"foo": "bar"}}, true)
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), `{
@@ -363,8 +360,7 @@ func TestContextRenderHTML(t *testing.T) {
 	r.SetTemplate(templ)
 	c.mel = r
 
-	c.Status(201)
-	c.HTML("t", Map{"name": "alexandernyquist"})
+	c.HTML(201, "t", Map{"name": "alexandernyquist"})
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "Hello alexandernyquist")
@@ -373,8 +369,7 @@ func TestContextRenderHTML(t *testing.T) {
 
 func TestContextRenderXML(t *testing.T) {
 	c, w := CreateTestContext()
-	c.Status(201)
-	c.XML(render.XMLMap{"foo": "bar"})
+	c.XML(201, render.XMLMap{"foo": "bar"})
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "<map><foo>bar</foo></map>")
@@ -383,8 +378,7 @@ func TestContextRenderXML(t *testing.T) {
 
 func TestContextRenderString(t *testing.T) {
 	c, w := CreateTestContext()
-	c.Status(201)
-	c.Text("test %s %d", "string", 2)
+	c.Text(201, "test %s %d", "string", 2)
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "test string 2")
@@ -394,8 +388,7 @@ func TestContextRenderString(t *testing.T) {
 func TestContextRenderHTMLString(t *testing.T) {
 	c, w := CreateTestContext()
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.Status(201)
-	c.Text("<html>%s %d</html>", "string", 3)
+	c.Text(201, "<html>%s %d</html>", "string", 3)
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "<html>string 3</html>")
@@ -404,8 +397,7 @@ func TestContextRenderHTMLString(t *testing.T) {
 
 func TestContextRenderData(t *testing.T) {
 	c, w := CreateTestContext()
-	c.Status(201)
-	c.Data("text/csv", []byte(`foo,bar`))
+	c.Data(201, "text/csv", []byte(`foo,bar`))
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "foo,bar")
@@ -450,8 +442,7 @@ func TestContextRenderFile(t *testing.T) {
 
 func TestContextRenderYAML(t *testing.T) {
 	c, w := CreateTestContext()
-	c.Status(201)
-	c.YAML(Map{"foo": "bar"})
+	c.YAML(201, Map{"foo": "bar"})
 
 	assert.Equal(t, w.Code, 201)
 	assert.Equal(t, w.Body.String(), "foo: bar\n")
