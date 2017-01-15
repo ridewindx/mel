@@ -276,7 +276,7 @@ func TestWithHttptestWithAutoSelectedPort(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	testRequest(t, ts.URL+"/example")
+	testRequest(t, ts.URL + "/example")
 }
 
 func TestWithHttptestWithSpecifiedPort(t *testing.T) {
