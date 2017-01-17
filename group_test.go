@@ -122,8 +122,12 @@ func TestRouterGroupTooManyHandlers(t *testing.T) {
 	assert.Panics(t, func() {
 		router.Use(handlers2...)
 	})
+	interfaces := make([]interface{}, 26)
+	for i, h := range handlers2 {
+		interfaces[i] = h
+	}
 	assert.Panics(t, func() {
-		router.Get("/", nil, handlers2...)
+		router.Get("/", interfaces...)
 	})
 }
 
