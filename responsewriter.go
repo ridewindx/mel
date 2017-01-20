@@ -72,7 +72,7 @@ func (w *responseWriter) Write(bytes []byte) (int, error) {
 
 func (w *responseWriter) WriteString(s string) (int, error) {
     if !w.Written() {
-        w.WriteHeader(http.StatusOK)
+        w.WriteHeader(w.status)
     }
 
 	size, err := io.WriteString(w.ResponseWriter, s)
