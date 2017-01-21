@@ -330,6 +330,9 @@ func (c *Context) Header(key, value string) {
     }
 }
 
+// Cookie represents an HTTP cookie as sent in the Set-Cookie header of an
+// HTTP response or the Cookie header of an HTTP request.
+// Fields are a subset of http.Cookie fields.
 type Cookie struct {
     Name string
     Value string
