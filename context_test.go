@@ -46,7 +46,7 @@ func must(err error) {
 func TestContextReset(t *testing.T) {
 	pool := newPool(nil)
 	c1 := pool.Get()
-	assert.Nil(t, c1.mel)
+	assert.Nil(t, c1.Mel)
 
 	c1.index = 2
 	c1.Writer = &responseWriter{ResponseWriter: httptest.NewRecorder()}
@@ -61,7 +61,7 @@ func TestContextReset(t *testing.T) {
 		return
 	}
 
-	assert.Nil(t, c2.mel)
+	assert.Nil(t, c2.Mel)
 	assert.Nil(t, c2.Request)
 	assert.Len(t, c2.Params, 0)
 	assert.Len(t, c2.handlers, 0)
@@ -358,7 +358,7 @@ func TestContextRenderHTML(t *testing.T) {
 	templ := template.Must(template.New("t").Parse(`Hello {{.name}}`))
 	r := New()
 	r.SetTemplate(templ)
-	c.mel = r
+	c.Mel = r
 
 	c.HTML(201, "t", Map{"name": "alexandernyquist"})
 
@@ -582,7 +582,7 @@ func TestContextAbortWithError(t *testing.T) {
 func TestContextClientIP(t *testing.T) {
 	r := New()
 	c, _ := CreateTestContext()
-	c.mel = r
+	c.Mel = r
 	c.Request, _ = http.NewRequest("POST", "/", nil)
 
 	c.Request.Header.Set("X-Real-IP", " 10.10.10.10  ")

@@ -28,6 +28,8 @@ type Mel struct {
 	ForwardedByClientIP    bool
 
 	Template *template.Template
+
+	vars map[string]interface{}
 }
 
 func New() *Mel {
@@ -223,3 +225,30 @@ func redirectFixedPath(ctx *Context, router *Router, trailingSlash bool) bool {
 	http.Redirect(ctx.Writer, req, req.URL.String(), code)
 	return true
 }
+
+// SetVar stores a new key/value pair exclusivelly for this app.
+// It also lazy initializes mel.vars if it was not used previously.
+func (mel *Mel) SetVar(key string, value interface{}) {
+	if mel.vars == nil {
+		mel.vars = make(map[string]interface{})
+	}
+	mel.vars[key] = value
+}
+
+// GetVar returns the value for the given key, i.e., (value, true).
+// If the value does not exists it returns (nil, false).
+func (mel *Mel) GetVar(key string) (value interface{}, exists bool) {
+	if mel.vars != nil {
+		value, exists = mel.vars[key]
+	}
+	return
+}
+
+// MustGetVar returns the value for the given key if it exists, otherwise it panics.
+func (mel *Mel) MustGetVar(key string) interface{} {
+	if value, exists := mel.GetVar(key); exists {
+		return value
+	}
+	panic("Variable \"" + key + "\" does not exist")
+}
+

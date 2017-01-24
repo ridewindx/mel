@@ -43,7 +43,7 @@ func newPool(mel *Mel) *pool {
     var p pool
     p.Pool.New = func() interface{} {
         c := newContext()
-        c.mel = mel
+        c.Mel = mel
         return c
     }
     return &p
@@ -60,7 +60,7 @@ type Context struct {
     Keys     map[string]interface{}
     Errors
 
-    mel      *Mel
+    *Mel
 }
 
 func newContext() *Context {
@@ -284,7 +284,7 @@ func (c *Context) BindWith(obj interface{}, b binding.Binding) error {
 // It parses X-Real-IP and X-Forwarded-For in order to work properly with
 // reverse-proxies such as nginx or haproxy.
 func (c *Context) ClientIP() string {
-    if c.mel.ForwardedByClientIP {
+    if c.Mel.ForwardedByClientIP {
         clientIP := strings.TrimSpace(c.requestHeader("X-Real-Ip"))
         if len(clientIP) > 0 {
             return clientIP
@@ -382,7 +382,7 @@ func (c *Context) Text(status int, format string, data ...interface{}) error {
 
 func (c *Context) HTML(status int, name string, obj interface{}) error {
     c.Status(status)
-    return c.renderer().HTML(c.mel.Template, name, obj)
+    return c.renderer().HTML(c.Mel.Template, name, obj)
 }
 
 func (c *Context) JSON(status int, obj interface{}, indented ...bool) error {
