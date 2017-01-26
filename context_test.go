@@ -76,7 +76,7 @@ func TestContextReset(t *testing.T) {
 func CreateTestContext() (c *Context, w *httptest.ResponseRecorder) {
 	w = httptest.NewRecorder()
 	c = newContext()
-	c.Writer.ResponseWriter = w
+	c.Writer.Reset(w)
 	return
 }
 
