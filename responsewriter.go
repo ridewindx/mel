@@ -15,9 +15,13 @@ type ResponseWriter interface {
     http.Hijacker
     http.CloseNotifier
 
-    // Status returns the http response status code,
+    // Reset resets the embedded http.ResponseWriter.
+    Reset(writer http.ResponseWriter)
+
+    // Status returns the HTTP response status code,
     // or 0 if the response has not been written.
-    Status() int
+    // If status was passed in, reset the HTTP response status.
+    Status(status ...int) int
 
     // Written returns whether or not the response has been written.
     Written() bool
@@ -38,8 +42,8 @@ type responseWriter struct {
 
 var _ ResponseWriter = &responseWriter{}
 
-func (w *responseWriter) reset() {
-    w.ResponseWriter = nil
+func (w *responseWriter) Reset(writer http.ResponseWriter) {
+    w.ResponseWriter = writer
     w.status = 0
     w.size = 0
     w.written = false
@@ -80,7 +84,10 @@ func (w *responseWriter) WriteString(s string) (int, error) {
     return size, err
 }
 
-func (w *responseWriter) Status() int {
+func (w *responseWriter) Status(status ...int) int {
+    if len(status) > 0 {
+        w.status = status[0]
+    }
     return w.status
 }
 
