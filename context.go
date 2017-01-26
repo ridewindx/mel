@@ -29,7 +29,7 @@ func (p *pool) Get() *Context {
 
 func (p *pool) Put(c *Context) {
     c.Request = nil
-    c.Writer.reset()
+    c.Writer.Reset(nil)
 	c.Params = nil
     c.handlers = nil
     c.index = preStartIndex
@@ -51,7 +51,7 @@ func newPool(mel *Mel) *pool {
 
 type Context struct {
     Request  *http.Request
-    Writer   *responseWriter
+    Writer   ResponseWriter
 
     Params
     handlers []Handler
@@ -71,7 +71,7 @@ func newContext() *Context {
 }
 
 func (c *Context) reset(w http.ResponseWriter, req *http.Request) {
-    c.Writer.ResponseWriter = w
+    c.Writer.Reset(w)
     c.Request = req
 }
 
@@ -317,7 +317,7 @@ func (c *Context) requestHeader(key string) string {
 }
 
 func (c *Context) Status(status int) {
-    c.Writer.status = status
+    c.Writer.Status(status)
 }
 
 // Header sets the value associated with key in the header.
