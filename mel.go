@@ -22,8 +22,8 @@ type Mel struct {
 	noRoute     []Handler
 	noMethod    []Handler
 
-	RedirectTrailingSlash bool
-	RedirectFixedPath bool
+	RedirectTrailingSlash  bool
+	RedirectFixedPath      bool
 	HandleMethodNotAllowed bool
 	ForwardedByClientIP    bool
 
@@ -35,7 +35,7 @@ type Mel struct {
 func New() *Mel {
 	debugPrintWARNINGNew()
 	mel := &Mel{
-		Router: NewRouter(),
+		Router:                 NewRouter(),
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      false,
 		HandleMethodNotAllowed: false,
@@ -73,7 +73,7 @@ func (mel *Mel) NoMethod(handlers ...Handler) {
 	mel.rebuildNoMethodHandlers()
 }
 
-// Use attachs global middlewares to the app. The middlewares attached though Use() will be
+// Use attachs global middlewares to the app. The middlewares attached through Use() will be
 // included in the handlers chain for every single request. Even 404, 405, static files...
 // For example, this is the right place for a logger or error management middleware.
 func (mel *Mel) Use(middleware ...Handler) {
@@ -213,7 +213,7 @@ func redirectFixedPath(ctx *Context, router *Router, trailingSlash bool) bool {
 			return false
 		}
 
-		fixedPath = fixedPath[:len(fixedPath) - 1]
+		fixedPath = fixedPath[:len(fixedPath)-1]
 	}
 
 	code := 301 // Permanent redirect, request with GET method
@@ -251,4 +251,3 @@ func (mel *Mel) MustGetVar(key string) interface{} {
 	}
 	panic("Variable \"" + key + "\" does not exist")
 }
-
